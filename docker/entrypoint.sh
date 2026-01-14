@@ -74,25 +74,43 @@ register_azure_providers() {
     # Liste des providers nécessaires pour ce projet
     PROVIDERS=("Microsoft.App" "Microsoft.ContainerRegistry" "Microsoft.Storage" "Microsoft.OperationalInsights" "Microsoft.DBforPostgreSQL")
     
+    local need_wait=false
+    
     for provider in "${PROVIDERS[@]}"; do
         STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
         
-        if [ "$STATE" != "Registered" ]; then
-            echo -e "${YELLOW}[REGISTER]${NC} Enregistrement de $provider..."
-            az provider register --namespace "$provider" --wait &>/dev/null &
+        if [ "$STATE" = "Registered" ]; then
+            echo -e "  ${GREEN}✓${NC} $provider"
+        elif [ "$STATE" = "Registering" ]; then
+            echo -e "  ${YELLOW}⏳${NC} $provider (en cours...)"
+            need_wait=true
+        else
+            echo -e "  ${YELLOW}→${NC} $provider (enregistrement...)"
+            az provider register --namespace "$provider" &>/dev/null &
+            need_wait=true
         fi
     done
     
-    # Attendre spécifiquement Microsoft.App (le plus critique)
-    echo -e "${BLUE}[WAIT]${NC} Attente de Microsoft.App (peut prendre 1-2 min)..."
-    for i in {1..30}; do
-        STATE=$(az provider show --namespace "Microsoft.App" --query "registrationState" -o tsv 2>/dev/null)
-        if [ "$STATE" = "Registered" ]; then
-            echo -e "${GREEN}[OK]${NC} Microsoft.App enregistré!"
-            break
-        fi
-        sleep 5
-    done
+    # Si Microsoft.App n'est pas prêt, attendre un peu (max 30s) mais ne pas bloquer
+    if [ "$need_wait" = true ]; then
+        echo ""
+        echo -e "${BLUE}[INFO]${NC} Certains providers sont en cours d'enregistrement."
+        echo -e "${BLUE}[INFO]${NC} Cela continue en arrière-plan. Vous pouvez lancer terraform apply."
+        echo -e "${BLUE}[INFO]${NC} Si erreur 'MissingSubscriptionRegistration', attendez 1-2 min et réessayez."
+        
+        # Attente rapide (30s max) avec feedback
+        echo -n -e "${YELLOW}[WAIT]${NC} Vérification rapide (30s max)..."
+        for i in {1..6}; do
+            STATE=$(az provider show --namespace "Microsoft.App" --query "registrationState" -o tsv 2>/dev/null)
+            if [ "$STATE" = "Registered" ]; then
+                echo -e " ${GREEN}OK!${NC}"
+                break
+            fi
+            echo -n "."
+            sleep 5
+        done
+        echo ""
+    fi
     
     echo -e "${GREEN}[OK]${NC} Providers Azure vérifiés"
 }
