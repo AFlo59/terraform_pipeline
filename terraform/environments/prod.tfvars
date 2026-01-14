@@ -10,6 +10,10 @@ project_name = "nyctaxi"
 environment  = "prod"
 location     = "francecentral"
 
+# Utiliser le même Resource Group pour tous les environnements
+use_existing_resource_group  = true
+existing_resource_group_name = "fabadiRG"
+
 tags = {
   project     = "nyc-taxi-pipeline"
   managed_by  = "terraform"

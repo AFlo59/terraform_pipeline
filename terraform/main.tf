@@ -57,7 +57,8 @@ module "storage" {
 
   resource_group_name      = local.resource_group_name
   location                 = local.resource_group_location
-  storage_account_name     = "st${var.project_name}${random_string.suffix.result}"
+  # Nom unique par environnement: stnyctaxidev123456
+  storage_account_name     = "st${var.project_name}${var.environment}${random_string.suffix.result}"
   account_tier             = var.storage_account_tier
   account_replication_type = var.storage_replication_type
   containers               = var.storage_containers
@@ -70,7 +71,8 @@ module "storage" {
 # -----------------------------------------------------------------------------
 
 resource "azurerm_container_registry" "main" {
-  name                = "acr${var.project_name}${random_string.suffix.result}"
+  # Nom unique par environnement: acrnyctaxidev123456
+  name                = "acr${var.project_name}${var.environment}${random_string.suffix.result}"
   resource_group_name = local.resource_group_name
   location            = local.resource_group_location
   sku                 = var.acr_sku
@@ -84,7 +86,8 @@ resource "azurerm_container_registry" "main" {
 # -----------------------------------------------------------------------------
 
 resource "azurerm_cosmosdb_postgresql_cluster" "main" {
-  name                            = "cosmos-${var.project_name}-${var.environment}"
+  # Nom unique par environnement: c-nyctaxi-dev-123456
+  name                            = "c-${var.project_name}-${var.environment}-${random_string.suffix.result}"
   resource_group_name             = local.resource_group_name
   location                        = local.resource_group_location
   administrator_login_password    = var.postgres_admin_password != "" ? var.postgres_admin_password : random_password.postgres.result
