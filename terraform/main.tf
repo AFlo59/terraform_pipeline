@@ -1,0 +1,236 @@
+# =============================================================================
+# Main Terraform Configuration - NYC Taxi Pipeline Infrastructure
+# =============================================================================
+# Ce fichier définit toutes les ressources Azure pour le projet
+# Architecture: Storage -> ACR -> Cosmos DB PostgreSQL -> Container Apps
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Ressources aléatoires pour l'unicité des noms
+# -----------------------------------------------------------------------------
+
+# Suffixe aléatoire pour les noms globalement uniques (Storage Account, ACR)
+resource "random_string" "suffix" {
+  length  = 6
+  special = false
+  upper   = false
+  numeric = true
+}
+
+# Mot de passe PostgreSQL si non fourni
+resource "random_password" "postgres" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+# -----------------------------------------------------------------------------
+# Resource Group
+# -----------------------------------------------------------------------------
+
+resource "azurerm_resource_group" "main" {
+  name     = "rg-${var.project_name}-${var.environment}"
+  location = var.location
+  tags     = var.tags
+}
+
+# -----------------------------------------------------------------------------
+# Storage Account + Blob Containers
+# -----------------------------------------------------------------------------
+
+resource "azurerm_storage_account" "main" {
+  name                     = "st${var.project_name}${random_string.suffix.result}"
+  resource_group_name      = azurerm_resource_group.main.name
+  location                 = azurerm_resource_group.main.location
+  account_tier             = var.storage_account_tier
+  account_replication_type = var.storage_replication_type
+
+  # Sécurité recommandée
+  min_tls_version          = "TLS1_2"
+  allow_nested_items_to_be_public = false
+
+  tags = var.tags
+}
+
+# Containers de stockage (raw, processed)
+resource "azurerm_storage_container" "containers" {
+  for_each              = toset(var.storage_containers)
+  name                  = each.value
+  storage_account_name  = azurerm_storage_account.main.name
+  container_access_type = "private"
+}
+
+# -----------------------------------------------------------------------------
+# Azure Container Registry (ACR)
+# -----------------------------------------------------------------------------
+
+resource "azurerm_container_registry" "main" {
+  name                = "acr${var.project_name}${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = var.acr_sku
+  admin_enabled       = var.acr_admin_enabled
+
+  tags = var.tags
+}
+
+# -----------------------------------------------------------------------------
+# Cosmos DB for PostgreSQL (Citus)
+# -----------------------------------------------------------------------------
+
+resource "azurerm_cosmosdb_postgresql_cluster" "main" {
+  name                            = "cosmos-${var.project_name}-${var.environment}"
+  resource_group_name             = azurerm_resource_group.main.name
+  location                        = azurerm_resource_group.main.location
+  administrator_login_password    = var.postgres_admin_password != "" ? var.postgres_admin_password : random_password.postgres.result
+  coordinator_storage_quota_in_mb = var.cosmosdb_postgres_coordinator_storage_mb
+  coordinator_vcore_count         = var.cosmosdb_postgres_coordinator_vcores
+  node_count                      = var.cosmosdb_postgres_node_count
+
+  # SKU Burstable pour 1 vCore (obligatoire selon le BRIEF)
+  coordinator_server_edition = "BurstableMemoryOptimized"
+
+  # Configuration haute disponibilité (désactivée pour dev)
+  ha_enabled = false
+
+  tags = var.tags
+}
+
+# Règle de firewall pour autoriser les services Azure (0.0.0.0)
+resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_azure_services" {
+  name             = "AllowAzureServices"
+  cluster_id       = azurerm_cosmosdb_postgresql_cluster.main.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+# -----------------------------------------------------------------------------
+# Log Analytics Workspace
+# -----------------------------------------------------------------------------
+
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "log-${var.project_name}-${var.environment}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = var.log_analytics_sku
+  retention_in_days   = var.log_analytics_retention_days
+
+  tags = var.tags
+}
+
+# -----------------------------------------------------------------------------
+# Container Apps Environment
+# -----------------------------------------------------------------------------
+
+resource "azurerm_container_app_environment" "main" {
+  name                       = "cae-${var.project_name}-${var.environment}"
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  tags = var.tags
+}
+
+# -----------------------------------------------------------------------------
+# Container App - NYC Taxi Pipeline
+# -----------------------------------------------------------------------------
+
+resource "azurerm_container_app" "pipeline" {
+  name                         = "ca-${var.project_name}-pipeline-${var.environment}"
+  resource_group_name          = azurerm_resource_group.main.name
+  container_app_environment_id = azurerm_container_app_environment.main.id
+  revision_mode                = "Single"
+
+  # Configuration des secrets
+  secret {
+    name  = "storage-connection-string"
+    value = azurerm_storage_account.main.primary_connection_string
+  }
+
+  secret {
+    name  = "postgres-password"
+    value = var.postgres_admin_password != "" ? var.postgres_admin_password : random_password.postgres.result
+  }
+
+  secret {
+    name  = "acr-password"
+    value = azurerm_container_registry.main.admin_password
+  }
+
+  # Configuration du registry privé (ACR)
+  registry {
+    server               = azurerm_container_registry.main.login_server
+    username             = azurerm_container_registry.main.admin_username
+    password_secret_name = "acr-password"
+  }
+
+  # Configuration du template de container
+  template {
+    # Définition du container principal
+    container {
+      name   = "nyc-taxi-pipeline"
+      image  = "${azurerm_container_registry.main.login_server}/nyc-taxi-pipeline:latest"
+      cpu    = var.container_app_cpu
+      memory = var.container_app_memory
+
+      # Variables d'environnement - Azure Storage
+      env {
+        name        = "AZURE_STORAGE_CONNECTION_STRING"
+        secret_name = "storage-connection-string"
+      }
+
+      env {
+        name  = "AZURE_CONTAINER_NAME"
+        value = "raw"
+      }
+
+      # Variables d'environnement - PostgreSQL
+      env {
+        name  = "POSTGRES_HOST"
+        value = azurerm_cosmosdb_postgresql_cluster.main.servers[0].fqdn
+      }
+
+      env {
+        name  = "POSTGRES_PORT"
+        value = "5432"
+      }
+
+      env {
+        name  = "POSTGRES_DB"
+        value = "citus"
+      }
+
+      env {
+        name  = "POSTGRES_USER"
+        value = "citus"
+      }
+
+      env {
+        name        = "POSTGRES_PASSWORD"
+        secret_name = "postgres-password"
+      }
+
+      env {
+        name  = "POSTGRES_SSL_MODE"
+        value = "require"
+      }
+
+      # Variables d'environnement - Configuration Pipeline
+      env {
+        name  = "START_DATE"
+        value = var.pipeline_start_date
+      }
+
+      env {
+        name  = "END_DATE"
+        value = var.pipeline_end_date
+      }
+    }
+
+    # Configuration du scaling
+    min_replicas = var.container_app_min_replicas
+    max_replicas = var.container_app_max_replicas
+  }
+
+  tags = var.tags
+}
