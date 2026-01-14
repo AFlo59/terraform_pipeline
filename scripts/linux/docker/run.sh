@@ -81,7 +81,7 @@ fi
 # Construction de la commande Docker
 echo -e "${BLUE}[INFO]${NC} Montage des volumes:"
 echo "  - Terraform config: $TERRAFORM_DIR -> /workspace/terraform"
-echo "  - brief-terraform:  $MAIN_PROJECT_DIR/brief-terraform -> /workspace/brief-terraform (read-only)"
+echo "  - data_pipeline:    $MAIN_PROJECT_DIR/data_pipeline -> /workspace/data_pipeline (read-only)"
 echo ""
 
 # Exécution du conteneur
@@ -90,7 +90,7 @@ if [ -n "$CUSTOM_CMD" ]; then
     docker run --rm $DOCKER_OPTS \
         --name "$CONTAINER_NAME" \
         -v "$TERRAFORM_DIR:/workspace/terraform" \
-        -v "$MAIN_PROJECT_DIR/brief-terraform:/workspace/brief-terraform:ro" \
+        -v "$MAIN_PROJECT_DIR/data_pipeline:/workspace/data_pipeline:ro" \
         -w /workspace/terraform \
         "${IMAGE_NAME}:${IMAGE_TAG}" \
         bash -c "$CUSTOM_CMD"
@@ -99,7 +99,7 @@ else
     docker run --rm $DOCKER_OPTS \
         --name "$CONTAINER_NAME" \
         -v "$TERRAFORM_DIR:/workspace/terraform" \
-        -v "$MAIN_PROJECT_DIR/brief-terraform:/workspace/brief-terraform:ro" \
+        -v "$MAIN_PROJECT_DIR/data_pipeline:/workspace/data_pipeline:ro" \
         -w /workspace/terraform \
         "${IMAGE_NAME}:${IMAGE_TAG}"
 fi

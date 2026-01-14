@@ -8,6 +8,8 @@ Bienvenue dans la documentation du projet NYC Taxi Pipeline Infrastructure.
 |----------|-------------|
 | [Architecture](./architecture.md) | Vue d'ensemble de l'infrastructure Azure |
 | [Getting Started](./getting-started.md) | Guide de démarrage rapide |
+| [Workflow](./workflow.md) | **Ordre d'utilisation terraform_pipeline + data_pipeline** |
+| [Sync Brief](./sync-brief.md) | **Conformité avec le BRIEF.md** |
 | [Scripts](./scripts.md) | Documentation des scripts disponibles |
 | [Environments](./environments.md) | Gestion des environnements (dev/rec/prod) |
 | [Terraform](./terraform.md) | Configuration et ressources Terraform |
@@ -50,4 +52,4 @@ terraform_pipeline/
 
 - [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
 - [Azure Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/)
-- [Brief du projet](../../brief-terraform/BRIEF.md)
+- [Data Pipeline](../../data_pipeline/README.md)

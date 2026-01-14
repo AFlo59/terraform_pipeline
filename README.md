@@ -253,10 +253,10 @@ terraform apply
 # Sortir du conteneur
 exit
 
-# Depuis le dossier brief-terraform (hors Docker)
-cd ../brief-terraform
+# Depuis le dossier data_pipeline (hors Docker)
+cd ../data_pipeline
 az acr login --name <acr-name>  # Nom affiché dans les outputs
-docker build -t nyc-taxi-pipeline:latest .
+.\scripts\windows\docker\build.ps1
 docker tag nyc-taxi-pipeline:latest <acr-url>/nyc-taxi-pipeline:latest
 docker push <acr-url>/nyc-taxi-pipeline:latest
 ```
@@ -318,9 +318,10 @@ terraform apply -var-file=environments/dev.tfvars -var-file=environments/secrets
   -target=azurerm_resource_group.main \
   -target=azurerm_container_registry.main
 
-# 2. Builder et pousser l'image (depuis brief-terraform/)
+# 2. Builder et pousser l'image (depuis data_pipeline/)
+cd ../data_pipeline
 az acr login --name <acr-name>
-docker build -t nyc-taxi-pipeline:latest .
+.\scripts\windows\docker\build.ps1
 docker tag nyc-taxi-pipeline:latest <acr-url>/nyc-taxi-pipeline:latest
 docker push <acr-url>/nyc-taxi-pipeline:latest
 
@@ -395,4 +396,4 @@ terraform force-unlock <LOCK_ID>
 - [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
 - [Azure Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/)
 - [Cosmos DB for PostgreSQL](https://learn.microsoft.com/en-us/azure/cosmos-db/postgresql/)
-- [Brief du projet](../brief-terraform/BRIEF.md)
+- [Data Pipeline](../data_pipeline/README.md)

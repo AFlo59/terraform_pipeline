@@ -28,36 +28,41 @@ resource "random_password" "postgres" {
 # Resource Group
 # -----------------------------------------------------------------------------
 
+# Créer un nouveau Resource Group ou utiliser un existant
 resource "azurerm_resource_group" "main" {
+  count    = var.use_existing_resource_group ? 0 : 1
   name     = "rg-${var.project_name}-${var.environment}"
   location = var.location
   tags     = var.tags
 }
 
-# -----------------------------------------------------------------------------
-# Storage Account + Blob Containers
-# -----------------------------------------------------------------------------
-
-resource "azurerm_storage_account" "main" {
-  name                     = "st${var.project_name}${random_string.suffix.result}"
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
-  account_tier             = var.storage_account_tier
-  account_replication_type = var.storage_replication_type
-
-  # Sécurité recommandée
-  min_tls_version          = "TLS1_2"
-  allow_nested_items_to_be_public = false
-
-  tags = var.tags
+# Data source pour récupérer un Resource Group existant
+data "azurerm_resource_group" "existing" {
+  count = var.use_existing_resource_group ? 1 : 0
+  name  = var.existing_resource_group_name != "" ? var.existing_resource_group_name : "rg-${var.project_name}-${var.environment}"
 }
 
-# Containers de stockage (raw, processed)
-resource "azurerm_storage_container" "containers" {
-  for_each              = toset(var.storage_containers)
-  name                  = each.value
-  storage_account_name  = azurerm_storage_account.main.name
-  container_access_type = "private"
+# Variables locales pour le Resource Group à utiliser
+locals {
+  resource_group_name     = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.main[0].name
+  resource_group_location = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.main[0].location
+}
+
+# -----------------------------------------------------------------------------
+# Storage Account + Blob Containers (via module)
+# -----------------------------------------------------------------------------
+
+module "storage" {
+  source = "./modules/storage"
+
+  resource_group_name      = local.resource_group_name
+  location                 = local.resource_group_location
+  storage_account_name     = "st${var.project_name}${random_string.suffix.result}"
+  account_tier             = var.storage_account_tier
+  account_replication_type = var.storage_replication_type
+  containers               = var.storage_containers
+
+  tags = var.tags
 }
 
 # -----------------------------------------------------------------------------
@@ -66,8 +71,8 @@ resource "azurerm_storage_container" "containers" {
 
 resource "azurerm_container_registry" "main" {
   name                = "acr${var.project_name}${random_string.suffix.result}"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
   sku                 = var.acr_sku
   admin_enabled       = var.acr_admin_enabled
 
@@ -80,8 +85,8 @@ resource "azurerm_container_registry" "main" {
 
 resource "azurerm_cosmosdb_postgresql_cluster" "main" {
   name                            = "cosmos-${var.project_name}-${var.environment}"
-  resource_group_name             = azurerm_resource_group.main.name
-  location                        = azurerm_resource_group.main.location
+  resource_group_name             = local.resource_group_name
+  location                        = local.resource_group_location
   administrator_login_password    = var.postgres_admin_password != "" ? var.postgres_admin_password : random_password.postgres.result
   coordinator_storage_quota_in_mb = var.cosmosdb_postgres_coordinator_storage_mb
   coordinator_vcore_count         = var.cosmosdb_postgres_coordinator_vcores
@@ -110,8 +115,8 @@ resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_azure_services" {
 
 resource "azurerm_log_analytics_workspace" "main" {
   name                = "log-${var.project_name}-${var.environment}"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
   sku                 = var.log_analytics_sku
   retention_in_days   = var.log_analytics_retention_days
 
@@ -124,8 +129,8 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 resource "azurerm_container_app_environment" "main" {
   name                       = "cae-${var.project_name}-${var.environment}"
-  resource_group_name        = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
+  resource_group_name        = local.resource_group_name
+  location                   = local.resource_group_location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
   tags = var.tags
@@ -137,14 +142,14 @@ resource "azurerm_container_app_environment" "main" {
 
 resource "azurerm_container_app" "pipeline" {
   name                         = "ca-${var.project_name}-pipeline-${var.environment}"
-  resource_group_name          = azurerm_resource_group.main.name
+  resource_group_name          = local.resource_group_name
   container_app_environment_id = azurerm_container_app_environment.main.id
   revision_mode                = "Single"
 
   # Configuration des secrets
   secret {
     name  = "storage-connection-string"
-    value = azurerm_storage_account.main.primary_connection_string
+    value = module.storage.primary_connection_string
   }
 
   secret {

@@ -95,7 +95,7 @@ scripts/
 
 **Volumes montés**:
 - `/workspace/terraform` → Configs Terraform (lecture/écriture)
-- `/workspace/brief-terraform` → Application Python (lecture seule)
+- `/workspace/data_pipeline` → Pipeline de données (lecture seule)
 
 ---
 

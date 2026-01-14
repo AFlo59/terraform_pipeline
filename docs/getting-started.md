@@ -115,8 +115,8 @@ terraform apply \
 **Sortez du conteneur** (`exit`) puis :
 
 ```powershell
-# Dans le dossier brief-terraform
-cd ..\brief-terraform
+# Dans le dossier data_pipeline
+cd ..\data_pipeline
 
 # Récupérer le nom ACR (affiché dans les outputs Terraform)
 # ou via Azure Portal

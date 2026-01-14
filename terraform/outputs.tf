@@ -9,13 +9,13 @@
 # -----------------------------------------------------------------------------
 
 output "resource_group_name" {
-  description = "Nom du Resource Group créé"
-  value       = azurerm_resource_group.main.name
+  description = "Nom du Resource Group utilisé"
+  value       = local.resource_group_name
 }
 
 output "resource_group_location" {
   description = "Région du Resource Group"
-  value       = azurerm_resource_group.main.location
+  value       = local.resource_group_location
 }
 
 # -----------------------------------------------------------------------------
@@ -24,23 +24,23 @@ output "resource_group_location" {
 
 output "storage_account_name" {
   description = "Nom du Storage Account"
-  value       = azurerm_storage_account.main.name
+  value       = module.storage.storage_account_name
 }
 
 output "storage_account_primary_blob_endpoint" {
   description = "Endpoint principal pour Blob Storage"
-  value       = azurerm_storage_account.main.primary_blob_endpoint
+  value       = module.storage.primary_blob_endpoint
 }
 
 output "storage_containers" {
   description = "Liste des containers créés"
-  value       = [for c in azurerm_storage_container.containers : c.name]
+  value       = values(module.storage.containers)
 }
 
 # Connexion string marquée comme sensible
 output "storage_connection_string" {
   description = "Connection string du Storage Account (sensible)"
-  value       = azurerm_storage_account.main.primary_connection_string
+  value       = module.storage.primary_connection_string
   sensitive   = true
 }
 
@@ -76,8 +76,8 @@ output "docker_build_commands" {
     # 1. Se connecter à ACR
     az acr login --name ${azurerm_container_registry.main.name}
     
-    # 2. Builder l'image (depuis le dossier brief-terraform)
-    docker build -t nyc-taxi-pipeline:latest .
+    # 2. Builder l'image (depuis le dossier data_pipeline)
+    cd ../data_pipeline && ./scripts/linux/docker/build.sh
     
     # 3. Tagger l'image
     docker tag nyc-taxi-pipeline:latest ${azurerm_container_registry.main.login_server}/nyc-taxi-pipeline:latest
@@ -138,12 +138,12 @@ output "container_app_environment_name" {
 # Commandes utiles pour les logs
 output "container_app_logs_command" {
   description = "Commande pour voir les logs du Container App"
-  value       = "az containerapp logs show --name ${azurerm_container_app.pipeline.name} --resource-group ${azurerm_resource_group.main.name} --follow"
+  value       = "az containerapp logs show --name ${azurerm_container_app.pipeline.name} --resource-group ${local.resource_group_name} --follow"
 }
 
 output "container_app_revisions_command" {
   description = "Commande pour lister les révisions du Container App"
-  value       = "az containerapp revision list --name ${azurerm_container_app.pipeline.name} --resource-group ${azurerm_resource_group.main.name}"
+  value       = "az containerapp revision list --name ${azurerm_container_app.pipeline.name} --resource-group ${local.resource_group_name}"
 }
 
 # -----------------------------------------------------------------------------
@@ -158,10 +158,10 @@ output "infrastructure_summary" {
     ║           NYC Taxi Pipeline - Infrastructure Déployée            ║
     ╚══════════════════════════════════════════════════════════════════╝
     
-    📦 Resource Group:     ${azurerm_resource_group.main.name}
-    📍 Région:             ${azurerm_resource_group.main.location}
+    📦 Resource Group:     ${local.resource_group_name}
+    📍 Région:             ${local.resource_group_location}
     
-    💾 Storage Account:    ${azurerm_storage_account.main.name}
+    💾 Storage Account:    ${module.storage.storage_account_name}
        Containers:         raw, processed
     
     🐳 Container Registry: ${azurerm_container_registry.main.login_server}

@@ -189,7 +189,8 @@ az acr repository show-tags --name <acr-name> --repository nyc-taxi-pipeline
 2. Pousser l'image si manquante :
 ```bash
 az acr login --name <acr-name>
-docker build -t nyc-taxi-pipeline:latest ../brief-terraform/
+cd ../data_pipeline
+.\scripts\windows\docker\build.ps1
 docker tag nyc-taxi-pipeline:latest <acr-url>/nyc-taxi-pipeline:latest
 docker push <acr-url>/nyc-taxi-pipeline:latest
 ```

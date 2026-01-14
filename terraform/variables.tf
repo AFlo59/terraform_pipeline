@@ -36,6 +36,18 @@ variable "location" {
   default     = "francecentral"
 }
 
+variable "use_existing_resource_group" {
+  description = "Utiliser un Resource Group existant au lieu d'en créer un nouveau"
+  type        = bool
+  default     = false
+}
+
+variable "existing_resource_group_name" {
+  description = "Nom du Resource Group existant (si use_existing_resource_group = true)"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags à appliquer à toutes les ressources"
   type        = map(string)

@@ -8,7 +8,11 @@
 
 project_name = "nyctaxi"
 environment  = "dev"
-location     = "francecentral"
+location     = "westeurope"
+
+# Utiliser un Resource Group existant
+use_existing_resource_group  = true
+existing_resource_group_name = "fabadiRG"
 
 tags = {
   project     = "nyc-taxi-pipeline"
@@ -39,7 +43,7 @@ cosmosdb_postgres_coordinator_vcores     = 1      # Minimum
 cosmosdb_postgres_coordinator_storage_mb = 32768  # 32 GB
 cosmosdb_postgres_node_count             = 0      # Single-node
 
-# ⚠️ IMPORTANT: Définir dans les variables d'environnement ou fichier séparé
+# ⚠️ IMPORTANT: Définir dans secrets.tfvars
 # postgres_admin_password = "CHANGE_ME"
 
 # -----------------------------------------------------------------------------
