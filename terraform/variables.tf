@@ -136,6 +136,12 @@ variable "postgres_admin_password" {
   default     = ""  # Sera généré automatiquement si non fourni
 }
 
+variable "postgres_allow_all_ips" {
+  description = "Autoriser toutes les IPs à se connecter (dev/rec uniquement, pas prod!)"
+  type        = bool
+  default     = false
+}
+
 # -----------------------------------------------------------------------------
 # Variables Log Analytics
 # -----------------------------------------------------------------------------

@@ -43,6 +43,9 @@ cosmosdb_postgres_coordinator_vcores     = 4        # Plus de puissance
 cosmosdb_postgres_coordinator_storage_mb = 131072   # 128 GB
 cosmosdb_postgres_node_count             = 0        # Augmenter si besoin de distribution
 
+# ⚠️ SÉCURITÉ: Ne JAMAIS autoriser toutes les IPs en production !
+postgres_allow_all_ips = false
+
 # ⚠️ IMPORTANT: Utiliser Azure Key Vault en production !
 # postgres_admin_password = "CHANGE_ME"
 

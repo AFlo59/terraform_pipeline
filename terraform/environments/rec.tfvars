@@ -43,6 +43,9 @@ cosmosdb_postgres_coordinator_vcores     = 2       # Plus de puissance
 cosmosdb_postgres_coordinator_storage_mb = 65536   # 64 GB
 cosmosdb_postgres_node_count             = 0       # Single-node encore
 
+# ⚠️ Autoriser toutes les IPs (rec - sécurisé par mot de passe + SSL)
+postgres_allow_all_ips = true
+
 # ⚠️ IMPORTANT: Définir dans les variables d'environnement ou fichier séparé
 # postgres_admin_password = "CHANGE_ME"
 

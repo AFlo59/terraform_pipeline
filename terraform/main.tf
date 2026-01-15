@@ -112,6 +112,16 @@ resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
+# Règle de firewall pour autoriser toutes les IPs (dev/rec uniquement)
+# Sécurisé par : mot de passe fort + SSL obligatoire
+resource "azurerm_cosmosdb_postgresql_firewall_rule" "allow_all_ips" {
+  count            = var.postgres_allow_all_ips ? 1 : 0
+  name             = "AllowAllIPs"
+  cluster_id       = azurerm_cosmosdb_postgresql_cluster.main.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "255.255.255.255"
+}
+
 # -----------------------------------------------------------------------------
 # Log Analytics Workspace
 # -----------------------------------------------------------------------------

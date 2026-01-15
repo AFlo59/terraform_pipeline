@@ -43,6 +43,9 @@ cosmosdb_postgres_coordinator_vcores     = 1      # Minimum
 cosmosdb_postgres_coordinator_storage_mb = 32768  # 32 GB
 cosmosdb_postgres_node_count             = 0      # Single-node
 
+# ⚠️ Autoriser toutes les IPs (dev uniquement - sécurisé par mot de passe + SSL)
+postgres_allow_all_ips = true
+
 # ⚠️ IMPORTANT: Définir dans secrets.tfvars
 # postgres_admin_password = "CHANGE_ME"
 
