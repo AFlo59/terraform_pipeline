@@ -17,37 +17,34 @@ Guide de démarrage rapide pour déployer l'infrastructure NYC Taxi Pipeline.
 - Souscription Azure active
 - Droits de création de ressources (Contributor ou Owner)
 
+## Workflow simplifié
+
+```
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   build.ps1  │────▶ │    run.ps1   │────▶│  apply dev   │
+│  (image)     │      │  (workspace) │      │ (déploie +   │
+└──────────────┘      └──────────────┘      │ génère .env) │
+                                            └──────────────┘
+```
+
 ## Étapes d'installation
 
-### Étape 1: Vérifier les prérequis
-
-```powershell
-# Windows
-cd terraform_pipeline
-.\scripts\windows\terraform\check-prereqs.ps1
-```
-
-```bash
-# Linux/WSL
-cd terraform_pipeline
-./scripts/linux/terraform/check-prereqs.sh
-```
-
-### Étape 2: Configurer les secrets
+### Étape 1 : Configurer les secrets
 
 ```powershell
 # Éditer le fichier de secrets
+cd terraform_pipeline
 notepad terraform\environments\secrets.tfvars
 ```
 
-Remplacez le mot de passe par défaut :
+Définissez un mot de passe PostgreSQL sécurisé :
 ```hcl
 postgres_admin_password = "VotreMotDePasseSecurise123!"
 ```
 
 > ⚠️ Le mot de passe doit contenir au moins 8 caractères avec majuscules, chiffres et symboles.
 
-### Étape 3: Construire l'image Docker
+### Étape 2 : Construire l'image Docker
 
 ```powershell
 # Windows
@@ -59,7 +56,7 @@ postgres_admin_password = "VotreMotDePasseSecurise123!"
 ./scripts/linux/docker/build.sh
 ```
 
-### Étape 4: Lancer le workspace Terraform
+### Étape 3 : Lancer le workspace Terraform
 
 ```powershell
 # Windows
@@ -71,46 +68,40 @@ postgres_admin_password = "VotreMotDePasseSecurise123!"
 ./scripts/linux/docker/run.sh
 ```
 
-### Étape 5: Se connecter à Azure
+### Étape 4 : Se connecter à Azure
 
-Dans le conteneur Docker :
+Le script propose automatiquement la connexion :
 
-```bash
-# Le script propose automatiquement la connexion
-# Sinon manuellement :
-az login --use-device-code
+```
+Voulez-vous vous connecter maintenant? (o/n) o
 ```
 
-1. Ouvrez https://microsoft.com/devicelogin dans votre navigateur
-2. Entrez le code affiché
-3. Connectez-vous avec votre compte Azure
+1. Répondez `o`
+2. Un code s'affiche (ex: `ABCD1234`)
+3. Ouvrez https://microsoft.com/devicelogin dans votre navigateur
+4. Entrez le code et connectez-vous
 
-### Étape 6: Initialiser Terraform
+**Automatisations après connexion :**
+- ✅ Providers Azure enregistrés automatiquement
+- ✅ `terraform init` exécuté automatiquement
 
-```bash
-terraform init
-```
+### Étape 5 : Déployer l'infrastructure
 
-### Étape 7: Prévisualiser le déploiement
-
-```bash
-terraform plan \
-  -var-file=environments/dev.tfvars \
-  -var-file=environments/secrets.tfvars
-```
-
-### Étape 8: Déployer l'ACR (première étape)
+Utilisez les **commandes simplifiées** :
 
 ```bash
-terraform apply \
-  -var-file=environments/dev.tfvars \
-  -var-file=environments/secrets.tfvars \
-  -target=azurerm_resource_group.main \
-  -target=azurerm_storage_account.main \
-  -target=azurerm_container_registry.main
+# Prévisualiser les changements
+plan dev
+
+# Déployer l'environnement dev
+apply dev
 ```
 
-### Étape 9: Builder et pusher l'image du pipeline
+**Après `apply dev` :**
+- ✅ Infrastructure Azure créée (~10 min)
+- ✅ Fichier `shared/.env.dev` généré automatiquement
+
+### Étape 6 : Push de l'image du pipeline
 
 **Sortez du conteneur** (`exit`) puis :
 
@@ -118,37 +109,44 @@ terraform apply \
 # Dans le dossier data_pipeline
 cd ..\data_pipeline
 
-# Récupérer le nom ACR (affiché dans les outputs Terraform)
-# ou via Azure Portal
+# Récupérer le nom ACR depuis les outputs Terraform
+# (affiché à la fin de apply dev)
 
 # Se connecter à ACR
 az acr login --name <acr-name>
 
 # Builder l'image
-docker build -t nyc-taxi-pipeline:latest .
+.\scripts\windows\docker\build.ps1
 
-# Tagger l'image
+# Tagger et pousser
 docker tag nyc-taxi-pipeline:latest <acr-url>/nyc-taxi-pipeline:latest
-
-# Pousser vers ACR
 docker push <acr-url>/nyc-taxi-pipeline:latest
 ```
 
-### Étape 10: Finaliser le déploiement
-
-Retournez dans le conteneur Terraform :
+### Étape 7 : Exécuter le pipeline
 
 ```powershell
-cd ..\terraform_pipeline
-.\scripts\windows\docker\run.ps1
+# Le fichier shared/.env.dev est automatiquement détecté
+.\scripts\windows\docker\run-azure.ps1
 ```
 
-Puis déployez le reste :
+## Commandes dans le workspace
+
+### Commandes simplifiées (recommandé)
+
+| Commande | Description |
+|----------|-------------|
+| `plan dev` | Prévisualiser les changements |
+| `apply dev` | Déployer + générer `.env.dev` |
+| `destroy dev` | Détruire + supprimer `.env.dev` |
+| `genenv dev` | Régénérer `.env.dev` sans apply |
+
+### Autres commandes utiles
 
 ```bash
-terraform apply \
-  -var-file=environments/dev.tfvars \
-  -var-file=environments/secrets.tfvars
+terraform output              # Voir les outputs
+az login --use-device-code    # Se reconnecter
+exit                          # Quitter le workspace
 ```
 
 ## Vérification
@@ -159,32 +157,43 @@ terraform apply \
 terraform output
 ```
 
-### Voir les logs du Container App
+### Vérifier le fichier .env généré
 
 ```bash
-az containerapp logs show \
-  --name ca-nyctaxi-pipeline-dev \
-  --resource-group rg-nyctaxi-dev \
-  --follow
+cat /workspace/shared/.env.dev
 ```
 
 ### Se connecter à PostgreSQL
 
 ```bash
+# Les credentials sont dans shared/.env.dev
 psql "postgresql://citus:<PASSWORD>@<HOSTNAME>:5432/citus?sslmode=require"
 ```
 
 ## Nettoyage
 
 ```bash
-# Détruire toute l'infrastructure
-terraform destroy \
-  -var-file=environments/dev.tfvars \
-  -var-file=environments/secrets.tfvars
+# Détruire l'infrastructure (supprime aussi shared/.env.dev)
+destroy dev
+```
+
+## Volume partagé
+
+Le fichier `.env` généré est accessible par `data_pipeline` :
+
+```
+Brief_Terraform_2/
+├── shared/
+│   └── .env.dev    # Généré ici
+├── terraform_pipeline/
+│   └── (génère .env)
+└── data_pipeline/
+    └── (utilise .env)
 ```
 
 ## Prochaines étapes
 
 - 📖 [Configuration des environnements](./environments.md)
+- 🏗️ [Architecture déployée](./architecture.md)
 - 🔧 [Documentation des scripts](./scripts.md)
 - 🐛 [Troubleshooting](./troubleshooting.md)
