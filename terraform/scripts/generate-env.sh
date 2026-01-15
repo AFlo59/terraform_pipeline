@@ -114,8 +114,8 @@ AZURE_LOCATION=${LOCATION}
 
 EOF
 
-# Definir les permissions (lecture seule pour les autres)
-chmod 600 "$ENV_FILE"
+# Definir les permissions (lisible par tous, ecriture owner uniquement)
+chmod 644 "$ENV_FILE"
 
 echo -e "${GREEN}[SUCCESS]${NC} Fichier ${ENV_FILE} genere!"
 echo ""
