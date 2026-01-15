@@ -63,6 +63,13 @@ output "acr_admin_username" {
   value       = azurerm_container_registry.main.admin_username
 }
 
+# Password admin du ACR (sensible)
+output "acr_admin_password" {
+  description = "Password admin du ACR (sensible)"
+  value       = azurerm_container_registry.main.admin_password
+  sensitive   = true
+}
+
 # Commande pour se connecter à ACR
 output "acr_login_command" {
   description = "Commande pour se connecter à ACR"
@@ -94,6 +101,12 @@ output "docker_build_commands" {
 output "postgres_host" {
   description = "Hostname du serveur PostgreSQL"
   value       = azurerm_cosmosdb_postgresql_cluster.main.servers[0].fqdn
+}
+
+output "postgres_password" {
+  description = "Mot de passe PostgreSQL (sensible)"
+  value       = var.postgres_admin_password != "" ? var.postgres_admin_password : random_password.postgres.result
+  sensitive   = true
 }
 
 output "postgres_connection_string" {
@@ -144,6 +157,15 @@ output "container_app_logs_command" {
 output "container_app_revisions_command" {
   description = "Commande pour lister les révisions du Container App"
   value       = "az containerapp revision list --name ${azurerm_container_app.pipeline.name} --resource-group ${local.resource_group_name}"
+}
+
+# -----------------------------------------------------------------------------
+# Environment Info (pour génération .env)
+# -----------------------------------------------------------------------------
+
+output "environment" {
+  description = "Environnement déployé (dev/rec/prod)"
+  value       = var.environment
 }
 
 # -----------------------------------------------------------------------------

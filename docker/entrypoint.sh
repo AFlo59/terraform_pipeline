@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # =============================================================================
 # Entrypoint Script - Terraform + Azure CLI Container
 # =============================================================================
@@ -190,45 +190,143 @@ fi
 # Initialiser Terraform automatiquement si nécessaire
 init_terraform
 
+# =============================================================================
+# Création des commandes simplifiées (disponibles dans le shell)
+# =============================================================================
+
+# Créer le fichier de fonctions bash ET l'ajouter au .bashrc
+cat > /root/.terraform-helpers.sh << 'HELPERS_EOF'
+#!/bin/bash
+# Commandes simplifiées pour Terraform
+
+# Couleurs
+_RED='\033[0;31m'
+_GREEN='\033[0;32m'
+_YELLOW='\033[1;33m'
+_BLUE='\033[0;34m'
+_NC='\033[0m'
+
+# Fonction plan
+plan() {
+    local env=${1:-dev}
+    if [[ ! "$env" =~ ^(dev|rec|prod)$ ]]; then
+        echo -e "${_RED}[ERROR]${_NC} Environnement invalide: $env"
+        echo "Usage: plan [dev|rec|prod]"
+        return 1
+    fi
+    echo -e "${_BLUE}[PLAN]${_NC} Environnement: ${_GREEN}$env${_NC}"
+    terraform plan -var-file="environments/${env}.tfvars" -var-file="environments/secrets.tfvars"
+}
+
+# Fonction apply (avec génération .env automatique)
+apply() {
+    local env=${1:-dev}
+    if [[ ! "$env" =~ ^(dev|rec|prod)$ ]]; then
+        echo -e "${_RED}[ERROR]${_NC} Environnement invalide: $env"
+        echo "Usage: apply [dev|rec|prod]"
+        return 1
+    fi
+    echo -e "${_GREEN}[APPLY]${_NC} Environnement: ${_GREEN}$env${_NC}"
+    
+    if terraform apply -var-file="environments/${env}.tfvars" -var-file="environments/secrets.tfvars"; then
+        echo ""
+        echo -e "${_BLUE}[GENERATE]${_NC} Génération du fichier .env..."
+        if [ -f "./scripts/generate-env.sh" ]; then
+            ./scripts/generate-env.sh "$env"
+        else
+            echo -e "${_YELLOW}[WARNING]${_NC} Script generate-env.sh non trouvé"
+        fi
+    fi
+}
+
+# Fonction destroy (avec suppression .env automatique)
+destroy() {
+    local env=${1:-dev}
+    if [[ ! "$env" =~ ^(dev|rec|prod)$ ]]; then
+        echo -e "${_RED}[ERROR]${_NC} Environnement invalide: $env"
+        echo "Usage: destroy [dev|rec|prod]"
+        return 1
+    fi
+    echo -e "${_RED}[DESTROY]${_NC} Environnement: ${_YELLOW}$env${_NC}"
+    
+    if terraform destroy -var-file="environments/${env}.tfvars" -var-file="environments/secrets.tfvars"; then
+        # Supprimer le fichier .env correspondant
+        local env_file="/workspace/shared/.env.${env}"
+        if [ -f "$env_file" ]; then
+            echo -e "${_YELLOW}[CLEANUP]${_NC} Suppression de $env_file..."
+            rm -f "$env_file"
+            echo -e "${_GREEN}[OK]${_NC} Fichier .env supprimé"
+        fi
+    fi
+}
+
+# Fonction output
+output() {
+    terraform output "$@"
+}
+
+# Fonction pour régénérer le .env sans redéployer
+genenv() {
+    local env=${1:-dev}
+    if [[ ! "$env" =~ ^(dev|rec|prod)$ ]]; then
+        echo -e "${_RED}[ERROR]${_NC} Environnement invalide: $env"
+        echo "Usage: genenv [dev|rec|prod]"
+        return 1
+    fi
+    if [ -f "./scripts/generate-env.sh" ]; then
+        ./scripts/generate-env.sh "$env"
+    else
+        echo -e "${_RED}[ERROR]${_NC} Script generate-env.sh non trouvé"
+    fi
+}
+
+# Fonction help
+tfhelp() {
+    echo ""
+    echo -e "${_BLUE}═══════════════════════════════════════════════════════════════════${_NC}"
+    echo -e "${_BLUE}                    COMMANDES DISPONIBLES                           ${_NC}"
+    echo -e "${_BLUE}═══════════════════════════════════════════════════════════════════${_NC}"
+    echo ""
+    echo -e "${_GREEN}Commandes simplifiées:${_NC}"
+    echo "  plan [env]     - Prévisualiser (défaut: dev)"
+    echo "  apply [env]    - Déployer + générer .env (défaut: dev)"
+    echo "  destroy [env]  - Détruire + supprimer .env (défaut: dev)"
+    echo "  output         - Voir les outputs Terraform"
+    echo "  genenv [env]   - Régénérer le .env sans redéployer"
+    echo "  tfhelp         - Afficher cette aide"
+    echo ""
+    echo -e "${_YELLOW}Environnements:${_NC} dev, rec, prod"
+    echo ""
+    echo -e "${_BLUE}Exemples:${_NC}"
+    echo "  plan dev       - Prévisualiser l'environnement dev"
+    echo "  apply dev      - Déployer dev + générer shared/.env.dev"
+    echo "  destroy prod   - Détruire prod + supprimer shared/.env.prod"
+    echo ""
+    echo -e "${_BLUE}Autres commandes:${_NC}"
+    echo "  az login --use-device-code  - Se reconnecter à Azure"
+    echo "  terraform [cmd]             - Commandes Terraform directes"
+    echo -e "  ${_RED}exit${_NC}                        - Quitter le workspace"
+    echo ""
+    echo -e "${_BLUE}═══════════════════════════════════════════════════════════════════${_NC}"
+}
+HELPERS_EOF
+
+# Ajouter au .bashrc pour que les fonctions soient disponibles dans le shell interactif
+if ! grep -q "terraform-helpers" /root/.bashrc 2>/dev/null; then
+    echo "" >> /root/.bashrc
+    echo "# Terraform helper functions" >> /root/.bashrc
+    echo "source /root/.terraform-helpers.sh" >> /root/.bashrc
+fi
+
+# Sourcer les fonctions pour la session actuelle
+source /root/.terraform-helpers.sh
+
 echo ""
 echo -e "${GREEN}[READY]${NC} Workspace Terraform prêt!"
 echo ""
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}                         COMMANDES UTILES                           ${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
-echo ""
-echo -e "${GREEN}Commandes de base:${NC}"
-echo "  terraform plan      - Prévisualiser les changements"
-echo "  terraform apply     - Appliquer les changements"
-echo "  terraform destroy   - Détruire l'infrastructure"
-echo "  terraform output    - Voir les outputs"
-echo "  az login --use-device-code  - Se reconnecter à Azure"
-echo ""
-echo -e "  ${RED}exit${NC}                  - Quitter le workspace"
-echo ""
-echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
-echo -e "${YELLOW}Plan (prévisualiser):${NC}"
-echo ""
-echo -e "  ${GREEN}DEV:${NC}  terraform plan -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
-echo -e "  ${YELLOW}REC:${NC}  terraform plan -var-file=environments/rec.tfvars -var-file=environments/secrets.tfvars"
-echo -e "  ${RED}PROD:${NC} terraform plan -var-file=environments/prod.tfvars -var-file=environments/secrets.tfvars"
-echo ""
-echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
-echo -e "${GREEN}Apply (déployer):${NC}"
-echo ""
-echo -e "  ${GREEN}DEV:${NC}  terraform apply -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
-echo -e "  ${YELLOW}REC:${NC}  terraform apply -var-file=environments/rec.tfvars -var-file=environments/secrets.tfvars"
-echo -e "  ${RED}PROD:${NC} terraform apply -var-file=environments/prod.tfvars -var-file=environments/secrets.tfvars"
-echo ""
-echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
-echo -e "${RED}Destroy (supprimer):${NC}"
-echo ""
-echo -e "  ${GREEN}DEV:${NC}  terraform destroy -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
-echo -e "  ${YELLOW}REC:${NC}  terraform destroy -var-file=environments/rec.tfvars -var-file=environments/secrets.tfvars"
-echo -e "  ${RED}PROD:${NC} terraform destroy -var-file=environments/prod.tfvars -var-file=environments/secrets.tfvars"
-echo ""
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
-echo ""
+
+# Afficher l'aide automatiquement
+tfhelp
 
 # Exécution de la commande passée en argument
 exec "$@"

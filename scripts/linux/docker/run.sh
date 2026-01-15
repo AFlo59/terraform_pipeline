@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # =============================================================================
 # Run Script - Terraform Interactive Workspace
 # =============================================================================
@@ -69,8 +69,12 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     docker rm -f "$CONTAINER_NAME" &> /dev/null || true
 fi
 
-# Création du dossier terraform s'il n'existe pas
+# Création des dossiers s'ils n'existent pas
 mkdir -p "$TERRAFORM_DIR"
+mkdir -p "$MAIN_PROJECT_DIR/shared"
+
+# Chemin du dossier partagé
+SHARED_DIR="$MAIN_PROJECT_DIR/shared"
 
 # Options Docker
 DOCKER_OPTS="-it"
@@ -81,6 +85,7 @@ fi
 # Construction de la commande Docker
 echo -e "${BLUE}[INFO]${NC} Montage des volumes:"
 echo "  - Terraform config: $TERRAFORM_DIR -> /workspace/terraform"
+echo "  - Shared (env):     $SHARED_DIR -> /workspace/shared"
 echo "  - data_pipeline:    $MAIN_PROJECT_DIR/data_pipeline -> /workspace/data_pipeline (read-only)"
 echo ""
 
@@ -90,6 +95,7 @@ if [ -n "$CUSTOM_CMD" ]; then
     docker run --rm $DOCKER_OPTS \
         --name "$CONTAINER_NAME" \
         -v "$TERRAFORM_DIR:/workspace/terraform" \
+        -v "$SHARED_DIR:/workspace/shared" \
         -v "$MAIN_PROJECT_DIR/data_pipeline:/workspace/data_pipeline:ro" \
         -w /workspace/terraform \
         "${IMAGE_NAME}:${IMAGE_TAG}" \
@@ -99,6 +105,7 @@ else
     docker run --rm $DOCKER_OPTS \
         --name "$CONTAINER_NAME" \
         -v "$TERRAFORM_DIR:/workspace/terraform" \
+        -v "$SHARED_DIR:/workspace/shared" \
         -v "$MAIN_PROJECT_DIR/data_pipeline:/workspace/data_pipeline:ro" \
         -w /workspace/terraform \
         "${IMAGE_NAME}:${IMAGE_TAG}"
