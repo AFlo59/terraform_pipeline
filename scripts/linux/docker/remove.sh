@@ -25,53 +25,53 @@ NC='\033[0m'
 # Fonctions utilitaires
 # =============================================================================
 
-# Vérifier si Docker tourne
+# VÃ©rifier si Docker tourne
 check_docker() {
     if ! docker info &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} Docker n'est pas en cours d'exécution!"
-        echo -e "${YELLOW}[INFO]${NC} Lancez Docker Desktop et réessayez."
+        echo -e "${RED}[ERROR]${NC} Docker n'est pas en cours d'exÃ©cution!"
+        echo -e "${YELLOW}[INFO]${NC} Lancez Docker Desktop et rÃ©essayez."
         exit 1
     fi
-    echo -e "${GREEN}[OK]${NC} Docker est en cours d'exécution"
+    echo -e "${GREEN}[OK]${NC} Docker est en cours d'exÃ©cution"
 }
 
-# Afficher l'état actuel
+# Afficher l'Ã©tat actuel
 show_status() {
     echo ""
-    echo -e "${CYAN}État actuel:${NC}"
+    echo -e "${CYAN}Ã‰tat actuel:${NC}"
     
     # Conteneur
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo -e "  ${GREEN}●${NC} Conteneur: ${CONTAINER_NAME} (en cours d'exécution)"
+        echo -e "  ${GREEN}â—${NC} Conteneur: ${CONTAINER_NAME} (en cours d'exÃ©cution)"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo -e "  ${YELLOW}●${NC} Conteneur: ${CONTAINER_NAME} (arrêté)"
+        echo -e "  ${YELLOW}â—${NC} Conteneur: ${CONTAINER_NAME} (arrÃªtÃ©)"
     else
-        echo -e "  ${RED}○${NC} Conteneur: ${CONTAINER_NAME} (n'existe pas)"
+        echo -e "  ${RED}â—‹${NC} Conteneur: ${CONTAINER_NAME} (n'existe pas)"
     fi
     
     # Image
     if docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" &>/dev/null; then
         local size=$(docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" --format '{{.Size}}' | awk '{printf "%.1f MB", $1/1024/1024}')
-        echo -e "  ${GREEN}●${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG} ($size)"
+        echo -e "  ${GREEN}â—${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG} ($size)"
     else
-        echo -e "  ${RED}○${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG} (n'existe pas)"
+        echo -e "  ${RED}â—‹${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG} (n'existe pas)"
     fi
     
     # Image backup
     if docker image inspect "${IMAGE_NAME}:backup" &>/dev/null; then
-        echo -e "  ${YELLOW}●${NC} Image backup: ${IMAGE_NAME}:backup (existe)"
+        echo -e "  ${YELLOW}â—${NC} Image backup: ${IMAGE_NAME}:backup (existe)"
     fi
     
     # Volumes dangling
     local dangling=$(docker volume ls -qf dangling=true | wc -l)
     if [ "$dangling" -gt 0 ]; then
-        echo -e "  ${YELLOW}●${NC} Volumes orphelins: $dangling"
+        echo -e "  ${YELLOW}â—${NC} Volumes orphelins: $dangling"
     fi
     
     # Images dangling
     local dangling_images=$(docker images -qf dangling=true | wc -l)
     if [ "$dangling_images" -gt 0 ]; then
-        echo -e "  ${YELLOW}●${NC} Images orphelines: $dangling_images"
+        echo -e "  ${YELLOW}â—${NC} Images orphelines: $dangling_images"
     fi
     
     echo ""
@@ -80,9 +80,9 @@ show_status() {
 # Afficher le menu
 show_menu() {
     echo -e "${BLUE}"
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║         Nettoyage - Terraform Azure Workspace                    ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+    echo "â•‘         Nettoyage - Terraform Azure Workspace                    â•‘"
+    echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
     echo -e "${NC}"
     
     echo -e "${CYAN}Que voulez-vous supprimer ?${NC}"
@@ -101,9 +101,9 @@ show_menu() {
 # Supprimer le conteneur
 remove_container() {
     echo ""
-    # Arrêter si en cours
+    # ArrÃªter si en cours
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo -e "${YELLOW}[STOP]${NC} Arrêt du conteneur: $CONTAINER_NAME"
+        echo -e "${YELLOW}[STOP]${NC} ArrÃªt du conteneur: $CONTAINER_NAME"
         docker stop "$CONTAINER_NAME" &>/dev/null
     fi
     
@@ -111,9 +111,9 @@ remove_container() {
     if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
         echo -e "${YELLOW}[REMOVE]${NC} Suppression du conteneur: $CONTAINER_NAME"
         docker rm "$CONTAINER_NAME" &>/dev/null
-        echo -e "${GREEN}[OK]${NC} Conteneur supprimé"
+        echo -e "${GREEN}[OK]${NC} Conteneur supprimÃ©"
     else
-        echo -e "${CYAN}[INFO]${NC} Aucun conteneur à supprimer"
+        echo -e "${CYAN}[INFO]${NC} Aucun conteneur Ã  supprimer"
     fi
 }
 
@@ -123,7 +123,7 @@ remove_image() {
     if docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" &>/dev/null; then
         echo -e "${YELLOW}[REMOVE]${NC} Suppression de l'image: ${IMAGE_NAME}:${IMAGE_TAG}"
         docker rmi "${IMAGE_NAME}:${IMAGE_TAG}" &>/dev/null
-        echo -e "${GREEN}[OK]${NC} Image supprimée"
+        echo -e "${GREEN}[OK]${NC} Image supprimÃ©e"
     else
         echo -e "${CYAN}[INFO]${NC} Image principale n'existe pas"
     fi
@@ -132,7 +132,7 @@ remove_image() {
     if docker image inspect "${IMAGE_NAME}:backup" &>/dev/null; then
         echo -e "${YELLOW}[REMOVE]${NC} Suppression de l'image backup"
         docker rmi "${IMAGE_NAME}:backup" &>/dev/null
-        echo -e "${GREEN}[OK]${NC} Image backup supprimée"
+        echo -e "${GREEN}[OK]${NC} Image backup supprimÃ©e"
     fi
 }
 
@@ -142,7 +142,7 @@ remove_dangling_volumes() {
     if [ -n "$volumes" ]; then
         echo -e "${YELLOW}[REMOVE]${NC} Suppression des volumes orphelins..."
         docker volume prune -f &>/dev/null
-        echo -e "${GREEN}[OK]${NC} Volumes orphelins supprimés"
+        echo -e "${GREEN}[OK]${NC} Volumes orphelins supprimÃ©s"
     else
         echo -e "${CYAN}[INFO]${NC} Aucun volume orphelin"
     fi
@@ -154,7 +154,7 @@ remove_dangling_images() {
     if [ -n "$images" ]; then
         echo -e "${YELLOW}[REMOVE]${NC} Suppression des images orphelines..."
         docker image prune -f &>/dev/null
-        echo -e "${GREEN}[OK]${NC} Images orphelines supprimées"
+        echo -e "${GREEN}[OK]${NC} Images orphelines supprimÃ©es"
     else
         echo -e "${CYAN}[INFO]${NC} Aucune image orpheline"
     fi
@@ -165,14 +165,14 @@ full_prune() {
     echo ""
     echo -e "${RED}[PRUNE]${NC} Nettoyage complet Docker..."
     docker system prune -f &>/dev/null
-    echo -e "${GREEN}[OK]${NC} Cache Docker nettoyé"
+    echo -e "${GREEN}[OK]${NC} Cache Docker nettoyÃ©"
 }
 
 # =============================================================================
 # SCRIPT PRINCIPAL
 # =============================================================================
 
-# 1. Vérifier Docker
+# 1. VÃ©rifier Docker
 check_docker
 
 # 2. Traitement des arguments CLI
@@ -183,30 +183,30 @@ case "$1" in
         remove_image
         remove_dangling_volumes
         remove_dangling_images
-        echo -e "\n${GREEN}[SUCCESS]${NC} Nettoyage complet terminé!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Nettoyage complet terminÃ©!"
         exit 0
         ;;
     --container|-c)
         remove_container
-        echo -e "\n${GREEN}[SUCCESS]${NC} Conteneur supprimé!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Conteneur supprimÃ©!"
         exit 0
         ;;
     --image|-i)
         remove_container
         remove_image
-        echo -e "\n${GREEN}[SUCCESS]${NC} Image supprimée!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Image supprimÃ©e!"
         exit 0
         ;;
     --volumes|-v)
         remove_dangling_volumes
-        echo -e "\n${GREEN}[SUCCESS]${NC} Volumes nettoyés!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Volumes nettoyÃ©s!"
         exit 0
         ;;
     --prune|-p)
         remove_container
         remove_image
         full_prune
-        echo -e "\n${GREEN}[SUCCESS]${NC} Prune complet terminé!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Prune complet terminÃ©!"
         exit 0
         ;;
     --help|-h)
@@ -235,12 +235,12 @@ choice=${choice:-1}
 case $choice in
     1)
         remove_container
-        echo -e "\n${GREEN}[SUCCESS]${NC} Conteneur supprimé! L'image est conservée pour un rebuild rapide."
+        echo -e "\n${GREEN}[SUCCESS]${NC} Conteneur supprimÃ©! L'image est conservÃ©e pour un rebuild rapide."
         ;;
     2)
         remove_container
         remove_image
-        echo -e "\n${GREEN}[SUCCESS]${NC} Conteneur et image supprimés!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Conteneur et image supprimÃ©s!"
         ;;
     3)
         echo -e "\n${RED}[WARNING]${NC} Ceci va supprimer le conteneur, l'image ET nettoyer le cache Docker."
@@ -251,21 +251,21 @@ case $choice in
             remove_dangling_volumes
             remove_dangling_images
             full_prune
-            echo -e "\n${GREEN}[SUCCESS]${NC} Nettoyage complet terminé!"
+            echo -e "\n${GREEN}[SUCCESS]${NC} Nettoyage complet terminÃ©!"
         else
-            echo -e "${YELLOW}[CANCEL]${NC} Opération annulée"
+            echo -e "${YELLOW}[CANCEL]${NC} OpÃ©ration annulÃ©e"
         fi
         ;;
     4)
         remove_dangling_volumes
-        echo -e "\n${GREEN}[SUCCESS]${NC} Volumes orphelins supprimés!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Volumes orphelins supprimÃ©s!"
         ;;
     5)
         remove_dangling_images
-        echo -e "\n${GREEN}[SUCCESS]${NC} Images orphelines supprimées!"
+        echo -e "\n${GREEN}[SUCCESS]${NC} Images orphelines supprimÃ©es!"
         ;;
     q|Q)
-        echo -e "${CYAN}[INFO]${NC} Aucune action effectuée"
+        echo -e "${CYAN}[INFO]${NC} Aucune action effectuÃ©e"
         exit 0
         ;;
     *)

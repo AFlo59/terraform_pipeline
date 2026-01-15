@@ -2,7 +2,7 @@
 # =============================================================================
 # Run Script - Terraform Interactive Workspace
 # =============================================================================
-# Lance un conteneur interactif pour exécuter des commandes Terraform
+# Lance un conteneur interactif pour exÃ©cuter des commandes Terraform
 # Usage: ./run.sh [--detach] [--cmd "commande"]
 # =============================================================================
 
@@ -42,8 +42,8 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
-            echo "  -d, --detach    Lancer en arrière-plan"
-            echo "  -c, --cmd       Exécuter une commande spécifique"
+            echo "  -d, --detach    Lancer en arriÃ¨re-plan"
+            echo "  -c, --cmd       ExÃ©cuter une commande spÃ©cifique"
             echo "  -h, --help      Afficher cette aide"
             exit 0
             ;;
@@ -54,26 +54,26 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo -e "${GREEN}[RUN]${NC} Démarrage du workspace Terraform"
+echo -e "${GREEN}[RUN]${NC} DÃ©marrage du workspace Terraform"
 echo ""
 
-# Vérifier si l'image existe
+# VÃ©rifier si l'image existe
 if ! docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" &> /dev/null; then
-    echo -e "${YELLOW}[WARNING]${NC} Image non trouvée. Construction en cours..."
+    echo -e "${YELLOW}[WARNING]${NC} Image non trouvÃ©e. Construction en cours..."
     "$SCRIPT_DIR/build.sh"
 fi
 
-# Arrêter et supprimer le conteneur existant si nécessaire
+# ArrÃªter et supprimer le conteneur existant si nÃ©cessaire
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-    echo -e "${YELLOW}[INFO]${NC} Arrêt du conteneur existant..."
+    echo -e "${YELLOW}[INFO]${NC} ArrÃªt du conteneur existant..."
     docker rm -f "$CONTAINER_NAME" &> /dev/null || true
 fi
 
-# Création des dossiers s'ils n'existent pas
+# CrÃ©ation des dossiers s'ils n'existent pas
 mkdir -p "$TERRAFORM_DIR"
 mkdir -p "$MAIN_PROJECT_DIR/shared"
 
-# Chemin du dossier partagé
+# Chemin du dossier partagÃ©
 SHARED_DIR="$MAIN_PROJECT_DIR/shared"
 
 # Options Docker
@@ -89,7 +89,7 @@ echo "  - Shared (env):     $SHARED_DIR -> /workspace/shared"
 echo "  - data_pipeline:    $MAIN_PROJECT_DIR/data_pipeline -> /workspace/data_pipeline (read-only)"
 echo ""
 
-# Exécution du conteneur
+# ExÃ©cution du conteneur
 if [ -n "$CUSTOM_CMD" ]; then
     echo -e "${GREEN}[EXEC]${NC} Commande: $CUSTOM_CMD"
     docker run --rm $DOCKER_OPTS \

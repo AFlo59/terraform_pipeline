@@ -2,7 +2,7 @@
 # =============================================================================
 # Check Prerequisites Script (Bash)
 # =============================================================================
-# Vérifie que tous les outils nécessaires sont installés
+# VÃ©rifie que tous les outils nÃ©cessaires sont installÃ©s
 # Usage: ./check-prereqs.sh
 # =============================================================================
 
@@ -45,7 +45,7 @@ check_info() {
 
 echo ""
 echo -e "${CYAN}================================================================${NC}"
-echo -e "${CYAN}    Vérification des prérequis - NYC Taxi Pipeline             ${NC}"
+echo -e "${CYAN}    VÃ©rification des prÃ©requis - NYC Taxi Pipeline             ${NC}"
 echo -e "${CYAN}================================================================${NC}"
 echo ""
 
@@ -58,7 +58,7 @@ if command -v docker &> /dev/null; then
     if [ -n "$DOCKER_VERSION" ]; then
         check_result "Docker Engine" "true" "v$DOCKER_VERSION"
         
-        # Vérifier si Docker est en cours d'exécution
+        # VÃ©rifier si Docker est en cours d'exÃ©cution
         if docker info &> /dev/null; then
             check_result "Docker Running" "true" "OK"
         else
@@ -81,12 +81,12 @@ if command -v az &> /dev/null; then
     if [ -n "$AZ_VERSION" ]; then
         check_result "Azure CLI" "true" "v$AZ_VERSION"
         
-        # Vérifier la connexion Azure
+        # VÃ©rifier la connexion Azure
         AZ_ACCOUNT=$(az account show --query "name" -o tsv 2>/dev/null || echo "")
         if [ -n "$AZ_ACCOUNT" ]; then
             check_result "Azure Login" "true" "$AZ_ACCOUNT"
         else
-            check_warn "Azure Login" "Non connecté (az login requis)"
+            check_warn "Azure Login" "Non connectÃ© (az login requis)"
         fi
     else
         check_result "Azure CLI" "false" ""
@@ -104,18 +104,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 TERRAFORM_DIR="$PROJECT_ROOT/terraform"
 
-# Vérifier les fichiers d'environnement
+# VÃ©rifier les fichiers d'environnement
 [ -f "$TERRAFORM_DIR/environments/dev.tfvars" ] && check_result "environments/dev.tfvars" "true" "OK" || check_result "environments/dev.tfvars" "false" ""
 [ -f "$TERRAFORM_DIR/environments/rec.tfvars" ] && check_result "environments/rec.tfvars" "true" "OK" || check_result "environments/rec.tfvars" "false" ""
 [ -f "$TERRAFORM_DIR/environments/prod.tfvars" ] && check_result "environments/prod.tfvars" "true" "OK" || check_result "environments/prod.tfvars" "false" ""
 
-# Vérifier secrets.tfvars
+# VÃ©rifier secrets.tfvars
 SECRETS_FILE="$TERRAFORM_DIR/environments/secrets.tfvars"
 if [ -f "$SECRETS_FILE" ]; then
     if grep -q "CHANGEZ_MOI" "$SECRETS_FILE"; then
-        check_warn "secrets.tfvars" "Mot de passe par défaut détecté!"
+        check_warn "secrets.tfvars" "Mot de passe par dÃ©faut dÃ©tectÃ©!"
     else
-        check_result "environments/secrets.tfvars" "true" "Configuré"
+        check_result "environments/secrets.tfvars" "true" "ConfigurÃ©"
     fi
 else
     check_warn "secrets.tfvars" "Fichier manquant"
@@ -136,28 +136,28 @@ echo ""
 # -----------------------------------------------------------------------------
 echo -e "${WHITE}Image Docker Terraform:${NC}"
 if docker image inspect "terraform-azure-workspace:latest" &> /dev/null; then
-    check_result "terraform-azure-workspace:latest" "true" "Prête"
+    check_result "terraform-azure-workspace:latest" "true" "PrÃªte"
 else
-    check_info "Image non construite - Exécutez: ./scripts/linux/docker/build.sh"
+    check_info "Image non construite - ExÃ©cutez: ./scripts/linux/docker/build.sh"
 fi
 echo ""
 
 # -----------------------------------------------------------------------------
-# Résumé
+# RÃ©sumÃ©
 # -----------------------------------------------------------------------------
 echo -e "${CYAN}================================================================${NC}"
 if [ "$ERROR_COUNT" -eq 0 ]; then
-    echo -e "  ${GREEN}Tous les prérequis sont satisfaits!${NC}"
+    echo -e "  ${GREEN}Tous les prÃ©requis sont satisfaits!${NC}"
     echo ""
-    echo -e "  ${WHITE}Prochaine étape:${NC}"
+    echo -e "  ${WHITE}Prochaine Ã©tape:${NC}"
     echo "    1. ./scripts/linux/docker/build.sh   (construire l'image)"
     echo "    2. ./scripts/linux/docker/run.sh     (lancer le workspace)"
 else
-    echo -e "  ${RED}$ERROR_COUNT prérequis manquant(s)${NC}"
+    echo -e "  ${RED}$ERROR_COUNT prÃ©requis manquant(s)${NC}"
     echo ""
     echo -e "  ${WHITE}Actions requises:${NC}"
     echo "    - Installez les outils manquants"
-    echo "    - Relancez ce script pour vérifier"
+    echo "    - Relancez ce script pour vÃ©rifier"
 fi
 echo -e "${CYAN}================================================================${NC}"
 echo ""

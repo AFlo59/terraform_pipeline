@@ -2,7 +2,7 @@
 # =============================================================================
 # Update Script - Terraform Docker Image
 # =============================================================================
-# Met à jour l'image Docker avec plusieurs options
+# Met Ã  jour l'image Docker avec plusieurs options
 # Usage: ./update.sh [--quick | --full | --pull | --auto]
 # =============================================================================
 
@@ -28,42 +28,42 @@ NC='\033[0m'
 
 check_docker() {
     if ! docker info &>/dev/null; then
-        echo -e "${RED}[ERROR]${NC} Docker n'est pas en cours d'exécution!"
-        echo -e "${YELLOW}[INFO]${NC} Lancez Docker Desktop et réessayez."
+        echo -e "${RED}[ERROR]${NC} Docker n'est pas en cours d'exÃ©cution!"
+        echo -e "${YELLOW}[INFO]${NC} Lancez Docker Desktop et rÃ©essayez."
         exit 1
     fi
-    echo -e "${GREEN}[OK]${NC} Docker est en cours d'exécution"
+    echo -e "${GREEN}[OK]${NC} Docker est en cours d'exÃ©cution"
 }
 
 show_current_status() {
     echo ""
-    echo -e "${CYAN}État actuel:${NC}"
+    echo -e "${CYAN}Ã‰tat actuel:${NC}"
     
     # Conteneur
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo -e "  ${GREEN}●${NC} Conteneur: ${CONTAINER_NAME} (en cours d'exécution)"
+        echo -e "  ${GREEN}â—${NC} Conteneur: ${CONTAINER_NAME} (en cours d'exÃ©cution)"
     elif docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo -e "  ${YELLOW}●${NC} Conteneur: ${CONTAINER_NAME} (arrêté)"
+        echo -e "  ${YELLOW}â—${NC} Conteneur: ${CONTAINER_NAME} (arrÃªtÃ©)"
     else
-        echo -e "  ${RED}○${NC} Conteneur: ${CONTAINER_NAME} (n'existe pas)"
+        echo -e "  ${RED}â—‹${NC} Conteneur: ${CONTAINER_NAME} (n'existe pas)"
     fi
     
     # Image
     if docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" &>/dev/null; then
         local size=$(docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" --format '{{.Size}}' | awk '{printf "%.1f MB", $1/1024/1024}')
         local created=$(docker image inspect "${IMAGE_NAME}:${IMAGE_TAG}" --format '{{.Created}}' | cut -d'T' -f1)
-        echo -e "  ${GREEN}●${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+        echo -e "  ${GREEN}â—${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG}"
         echo -e "      Taille: $size"
-        echo -e "      Créée le: $created"
+        echo -e "      CrÃ©Ã©e le: $created"
     else
-        echo -e "  ${RED}○${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG} (n'existe pas)"
+        echo -e "  ${RED}â—‹${NC} Image: ${IMAGE_NAME}:${IMAGE_TAG} (n'existe pas)"
     fi
     
     # Image de base
     if docker image inspect "hashicorp/terraform:1.7.0" &>/dev/null; then
-        echo -e "  ${GREEN}●${NC} Image de base: hashicorp/terraform:1.7.0 (présente)"
+        echo -e "  ${GREEN}â—${NC} Image de base: hashicorp/terraform:1.7.0 (prÃ©sente)"
     else
-        echo -e "  ${YELLOW}○${NC} Image de base: hashicorp/terraform:1.7.0 (à télécharger)"
+        echo -e "  ${YELLOW}â—‹${NC} Image de base: hashicorp/terraform:1.7.0 (Ã  tÃ©lÃ©charger)"
     fi
     
     echo ""
@@ -71,24 +71,24 @@ show_current_status() {
 
 show_menu() {
     echo -e "${BLUE}"
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║         Mise à jour - Terraform Azure Workspace                  ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+    echo "â•‘         Mise Ã  jour - Terraform Azure Workspace                  â•‘"
+    echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
     echo -e "${NC}"
     
-    echo -e "${CYAN}Choisissez le type de mise à jour:${NC}"
+    echo -e "${CYAN}Choisissez le type de mise Ã  jour:${NC}"
     echo ""
-    echo -e "  ${GREEN}1)${NC} Mise à jour rapide (avec cache Docker)"
-    echo -e "     → Rapide si seuls quelques fichiers ont changé"
+    echo -e "  ${GREEN}1)${NC} Mise Ã  jour rapide (avec cache Docker)"
+    echo -e "     â†’ Rapide si seuls quelques fichiers ont changÃ©"
     echo ""
-    echo -e "  ${YELLOW}2)${NC} Mise à jour complète (sans cache)"
-    echo -e "     → Reconstruit tout depuis zéro"
+    echo -e "  ${YELLOW}2)${NC} Mise Ã  jour complÃ¨te (sans cache)"
+    echo -e "     â†’ Reconstruit tout depuis zÃ©ro"
     echo ""
-    echo -e "  ${BLUE}3)${NC} Mise à jour + Pull images de base"
-    echo -e "     → Télécharge les dernières versions des images de base"
+    echo -e "  ${BLUE}3)${NC} Mise Ã  jour + Pull images de base"
+    echo -e "     â†’ TÃ©lÃ©charge les derniÃ¨res versions des images de base"
     echo ""
-    echo -e "  ${CYAN}4)${NC} Mise à jour + Lancer le conteneur"
-    echo -e "     → Met à jour puis démarre automatiquement"
+    echo -e "  ${CYAN}4)${NC} Mise Ã  jour + Lancer le conteneur"
+    echo -e "     â†’ Met Ã  jour puis dÃ©marre automatiquement"
     echo ""
     echo -e "  ${RED}q)${NC} Quitter"
     echo ""
@@ -96,7 +96,7 @@ show_menu() {
 
 stop_container() {
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        echo -e "${YELLOW}[STOP]${NC} Arrêt du conteneur en cours..."
+        echo -e "${YELLOW}[STOP]${NC} ArrÃªt du conteneur en cours..."
         docker stop "$CONTAINER_NAME" &>/dev/null
     fi
     
@@ -124,7 +124,7 @@ restore_backup() {
     if docker image inspect "${IMAGE_NAME}:backup" &>/dev/null; then
         echo -e "${RED}[RESTORE]${NC} Restauration de l'ancienne image..."
         docker tag "${IMAGE_NAME}:backup" "${IMAGE_NAME}:${IMAGE_TAG}"
-        echo -e "${GREEN}[OK]${NC} Ancienne image restaurée"
+        echo -e "${GREEN}[OK]${NC} Ancienne image restaurÃ©e"
     fi
 }
 
@@ -142,20 +142,20 @@ do_update() {
     if "$SCRIPT_DIR/build.sh" $build_option; then
         cleanup_backup
         echo ""
-        echo -e "${GREEN}[SUCCESS]${NC} Image mise à jour avec succès!"
+        echo -e "${GREEN}[SUCCESS]${NC} Image mise Ã  jour avec succÃ¨s!"
         
         if [ "$start_after" = "true" ]; then
             echo ""
-            echo -e "${CYAN}[START]${NC} Démarrage du conteneur..."
+            echo -e "${CYAN}[START]${NC} DÃ©marrage du conteneur..."
             "$SCRIPT_DIR/run.sh"
         else
             echo ""
-            echo -e "${CYAN}Prochaine étape:${NC}"
+            echo -e "${CYAN}Prochaine Ã©tape:${NC}"
             echo "  ./scripts/linux/docker/run.sh"
         fi
     else
         echo ""
-        echo -e "${RED}[ERROR]${NC} Échec de la mise à jour!"
+        echo -e "${RED}[ERROR]${NC} Ã‰chec de la mise Ã  jour!"
         restore_backup
         exit 1
     fi
@@ -165,7 +165,7 @@ do_update() {
 # SCRIPT PRINCIPAL
 # =============================================================================
 
-# 1. Vérifier Docker
+# 1. VÃ©rifier Docker
 check_docker
 
 # 2. Traitement des arguments CLI
@@ -194,10 +194,10 @@ case "$1" in
         echo "Usage: $0 [option]"
         echo ""
         echo "Options:"
-        echo "  -q, --quick  Mise à jour rapide (avec cache)"
-        echo "  -f, --full   Mise à jour complète (sans cache)"
-        echo "  -p, --pull   Mise à jour + pull images de base"
-        echo "  -a, --auto   Mise à jour + lancer conteneur"
+        echo "  -q, --quick  Mise Ã  jour rapide (avec cache)"
+        echo "  -f, --full   Mise Ã  jour complÃ¨te (sans cache)"
+        echo "  -p, --pull   Mise Ã  jour + pull images de base"
+        echo "  -a, --auto   Mise Ã  jour + lancer conteneur"
         echo "  -h, --help   Afficher cette aide"
         echo ""
         echo "Sans option: menu interactif"
@@ -226,7 +226,7 @@ case $choice in
         do_update "--auto" "true"
         ;;
     q|Q)
-        echo -e "${CYAN}[INFO]${NC} Mise à jour annulée"
+        echo -e "${CYAN}[INFO]${NC} Mise Ã  jour annulÃ©e"
         exit 0
         ;;
     *)

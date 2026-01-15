@@ -15,14 +15,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Vérifier l'argument
+# VÃ©rifier l'argument
 if [ -z "$1" ]; then
     echo -e "${RED}[ERROR]${NC} Environnement requis!"
     echo ""
     echo "Usage: $0 <environment>"
     echo ""
     echo "Environnements disponibles:"
-    echo -e "  ${GREEN}dev${NC}   - Développement"
+    echo -e "  ${GREEN}dev${NC}   - DÃ©veloppement"
     echo -e "  ${YELLOW}rec${NC}   - Recette"
     echo -e "  ${RED}prod${NC}  - Production"
     echo ""
@@ -35,50 +35,50 @@ TFVARS_FILE="environments/${ENV}.tfvars"
 SECRETS_FILE="environments/secrets.tfvars"
 
 echo -e "${BLUE}"
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║         Terraform Apply - Environment: ${ENV}                    ║"
-echo "╚══════════════════════════════════════════════════════════════════╝"
+echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+echo "â•‘         Terraform Apply - Environment: ${ENV}                    â•‘"
+echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
 echo -e "${NC}"
 
-# Vérifier que les fichiers tfvars existent
+# VÃ©rifier que les fichiers tfvars existent
 if [ ! -f "$TFVARS_FILE" ]; then
-    echo -e "${RED}[ERROR]${NC} Fichier non trouvé: $TFVARS_FILE"
+    echo -e "${RED}[ERROR]${NC} Fichier non trouvÃ©: $TFVARS_FILE"
     exit 1
 fi
 
 if [ ! -f "$SECRETS_FILE" ]; then
-    echo -e "${RED}[ERROR]${NC} Fichier non trouvé: $SECRETS_FILE"
-    echo -e "${YELLOW}[INFO]${NC} Créez-le à partir de secrets.tfvars.example"
+    echo -e "${RED}[ERROR]${NC} Fichier non trouvÃ©: $SECRETS_FILE"
+    echo -e "${YELLOW}[INFO]${NC} CrÃ©ez-le Ã  partir de secrets.tfvars.example"
     exit 1
 fi
 
-# Exécuter terraform apply
-echo -e "${GREEN}[APPLY]${NC} Exécution de terraform apply..."
+# ExÃ©cuter terraform apply
+echo -e "${GREEN}[APPLY]${NC} ExÃ©cution de terraform apply..."
 echo ""
 
 if terraform apply -var-file="$TFVARS_FILE" -var-file="$SECRETS_FILE"; then
     echo ""
-    echo -e "${GREEN}[SUCCESS]${NC} Terraform apply terminé avec succès!"
+    echo -e "${GREEN}[SUCCESS]${NC} Terraform apply terminÃ© avec succÃ¨s!"
     echo ""
     
-    # Générer le fichier .env
-    echo -e "${BLUE}[GENERATE]${NC} Génération du fichier .env..."
+    # GÃ©nÃ©rer le fichier .env
+    echo -e "${BLUE}[GENERATE]${NC} GÃ©nÃ©ration du fichier .env..."
     "$SCRIPT_DIR/generate-env.sh" "$ENV"
     
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}                    DÉPLOIEMENT TERMINÉ                              ${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${GREEN}                    DÃ‰PLOIEMENT TERMINÃ‰                              ${NC}"
+    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
-    echo -e "Fichier .env généré: ${BLUE}/workspace/shared/.env.${ENV}${NC}"
+    echo -e "Fichier .env gÃ©nÃ©rÃ©: ${BLUE}/workspace/shared/.env.${ENV}${NC}"
     echo ""
-    echo -e "Prochaines étapes:"
+    echo -e "Prochaines Ã©tapes:"
     echo "  1. Le data_pipeline peut maintenant utiliser les ressources Azure"
     echo "  2. Lancez le pipeline avec: docker-compose up"
     echo ""
 else
     echo ""
-    echo -e "${RED}[ERROR]${NC} Terraform apply a échoué!"
-    echo -e "${YELLOW}[INFO]${NC} Vérifiez les erreurs ci-dessus"
+    echo -e "${RED}[ERROR]${NC} Terraform apply a Ã©chouÃ©!"
+    echo -e "${YELLOW}[INFO]${NC} VÃ©rifiez les erreurs ci-dessus"
     exit 1
 fi
