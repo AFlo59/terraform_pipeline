@@ -2,11 +2,11 @@
 # =============================================================================
 # Generate .env file from Terraform outputs
 # =============================================================================
-# Usage: ./scripts/generate-env.sh [environment]
-# Example: ./scripts/generate-env.sh dev
-# =============================================================================
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TERRAFORM_DIR="$(dirname "$SCRIPT_DIR")"
+
+cd "$TERRAFORM_DIR" || exit 1
 
 # Couleurs
 RED='\033[0;31m'
@@ -15,52 +15,52 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# RÃ©cupÃ©rer l'environnement depuis les outputs Terraform
+# Recuperer l'environnement depuis les outputs Terraform
 ENV=${1:-$(terraform output -raw environment 2>/dev/null || echo "dev")}
 SHARED_DIR="/workspace/shared"
 ENV_FILE="${SHARED_DIR}/.env.${ENV}"
 
-echo -e "${BLUE}[GENERATE]${NC} GÃ©nÃ©ration du fichier .env pour l'environnement: ${ENV}"
+echo -e "${BLUE}[GENERATE]${NC} Generation du fichier .env pour l'environnement: ${ENV}"
 
-# VÃ©rifier que le dossier shared existe
+# Verifier que le dossier shared existe
 if [ ! -d "$SHARED_DIR" ]; then
     echo -e "${RED}[ERROR]${NC} Le dossier $SHARED_DIR n'existe pas!"
-    echo -e "${YELLOW}[INFO]${NC} Assurez-vous que le volume shared/ est montÃ©"
+    echo -e "${YELLOW}[INFO]${NC} Assurez-vous que le volume shared/ est monte"
     exit 1
 fi
 
-# VÃ©rifier que Terraform a des outputs
+# Verifier que Terraform a des outputs
 if ! terraform output -json &>/dev/null; then
     echo -e "${RED}[ERROR]${NC} Impossible de lire les outputs Terraform"
-    echo -e "${YELLOW}[INFO]${NC} ExÃ©cutez d'abord 'terraform apply'"
+    echo -e "${YELLOW}[INFO]${NC} Executez d'abord 'terraform apply'"
     exit 1
 fi
 
-# RÃ©cupÃ©rer les valeurs (avec gestion des valeurs sensibles)
-echo -e "${BLUE}[INFO]${NC} RÃ©cupÃ©ration des outputs Terraform..."
+# Recuperer les valeurs (avec gestion des valeurs sensibles)
+echo -e "${BLUE}[INFO]${NC} Recuperation des outputs Terraform..."
 
 # Valeurs non sensibles
 STORAGE_ACCOUNT=$(terraform output -raw storage_account_name 2>/dev/null || echo "")
-ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server 2>/dev/null || echo "")
-ACR_USERNAME=$(terraform output -raw acr_admin_username 2>/dev/null || echo "")
 POSTGRES_HOST=$(terraform output -raw postgres_host 2>/dev/null || echo "")
-RESOURCE_GROUP=$(terraform output -raw resource_group_name 2>/dev/null || echo "")
+ACR_SERVER=$(terraform output -raw acr_login_server 2>/dev/null || echo "")
+ACR_USERNAME=$(terraform output -raw acr_admin_username 2>/dev/null || echo "")
+RG_NAME=$(terraform output -raw resource_group_name 2>/dev/null || echo "")
 LOCATION=$(terraform output -raw resource_group_location 2>/dev/null || echo "")
 
-# Valeurs sensibles (nÃ©cessite -json pour les extraire)
+# Valeurs sensibles (necessite -json pour les extraire)
 STORAGE_CONNECTION=$(terraform output -json storage_connection_string 2>/dev/null | tr -d '"' || echo "")
 ACR_PASSWORD=$(terraform output -json acr_admin_password 2>/dev/null | tr -d '"' || echo "")
 POSTGRES_PASSWORD=$(terraform output -json postgres_password 2>/dev/null | tr -d '"' || echo "")
 
-# VÃ©rification des valeurs critiques
+# Verification des valeurs critiques
 if [ -z "$STORAGE_CONNECTION" ] || [ -z "$POSTGRES_HOST" ]; then
     echo -e "${RED}[ERROR]${NC} Certaines valeurs sont manquantes"
-    echo -e "${YELLOW}[INFO]${NC} VÃ©rifiez que terraform apply a rÃ©ussi"
+    echo -e "${YELLOW}[INFO]${NC} Verifiez que terraform apply a reussi"
     exit 1
 fi
 
-# GÃ©nÃ©rer le fichier .env
-echo -e "${GREEN}[WRITE]${NC} Ã‰criture de ${ENV_FILE}..."
+# Generer le fichier .env
+echo -e "${GREEN}[WRITE]${NC} Ecriture de ${ENV_FILE}..."
 
 cat > "$ENV_FILE" << EOF
 # =============================================================================
@@ -95,7 +95,7 @@ POSTGRES_SSL_MODE=require
 # -----------------------------------------------------------------------------
 # Azure Container Registry
 # -----------------------------------------------------------------------------
-ACR_LOGIN_SERVER=${ACR_LOGIN_SERVER}
+ACR_LOGIN_SERVER=${ACR_SERVER}
 ACR_USERNAME=${ACR_USERNAME}
 ACR_PASSWORD=${ACR_PASSWORD}
 
@@ -109,16 +109,17 @@ END_DATE=2024-02
 # Metadata
 # -----------------------------------------------------------------------------
 TERRAFORM_ENVIRONMENT=${ENV}
-AZURE_RESOURCE_GROUP=${RESOURCE_GROUP}
+AZURE_RESOURCE_GROUP=${RG_NAME}
 AZURE_LOCATION=${LOCATION}
+
 EOF
 
-# DÃ©finir les permissions (lecture seule pour les autres)
+# Definir les permissions (lecture seule pour les autres)
 chmod 600 "$ENV_FILE"
 
-echo -e "${GREEN}[SUCCESS]${NC} Fichier ${ENV_FILE} gÃ©nÃ©rÃ©!"
+echo -e "${GREEN}[SUCCESS]${NC} Fichier ${ENV_FILE} genere!"
 echo ""
 echo -e "${BLUE}[INFO]${NC} Pour utiliser ce fichier dans data_pipeline:"
-echo "  1. Le fichier est disponible dans le volume partagÃ©"
+echo "  1. Le fichier est disponible dans le volume partage"
 echo "  2. data_pipeline peut le lire depuis /app/shared/.env.${ENV}"
 echo ""

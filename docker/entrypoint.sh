@@ -2,10 +2,10 @@
 # =============================================================================
 # Entrypoint Script - Terraform + Azure CLI Container
 # =============================================================================
-# Ce script initialise l'environnement et vÃ©rifie la connexion Azure
+# Ce script initialise l'environnement et verifie la connexion Azure
 # =============================================================================
 
-# Note: on n'utilise PAS "set -e" car certaines commandes peuvent Ã©chouer
+# Note: on n'utilise PAS "set -e" car certaines commandes peuvent echouer
 # (ex: az provider register si pas les permissions) sans bloquer le script
 
 # Couleurs pour les messages
@@ -15,30 +15,30 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# BanniÃ¨re d'accueil
+# Banniere d'accueil
 echo -e "${BLUE}"
-echo "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
-echo "â•‘           Terraform + Azure CLI Workspace                        â•‘"
-echo "â•‘           NYC Taxi Pipeline Infrastructure                       â•‘"
-echo "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
+echo "======================================================================"
+echo "           Terraform + Azure CLI Workspace                           "
+echo "           NYC Taxi Pipeline Infrastructure                          "
+echo "======================================================================"
 echo -e "${NC}"
 
-# CrÃ©ation des rÃ©pertoires nÃ©cessaires
+# Creation des repertoires necessaires
 mkdir -p /workspace/logs
 mkdir -p /workspace/.azure
 
 # Affichage des versions
-echo -e "${GREEN}[INFO]${NC} Versions installÃ©es:"
+echo -e "${GREEN}[INFO]${NC} Versions installees:"
 echo "  - Terraform: $(terraform version -json | jq -r '.terraform_version')"
 echo "  - Azure CLI: $(az version -o tsv --query '"azure-cli"')"
 echo ""
 
-# VÃ©rification de la connexion Azure
+# Verification de la connexion Azure
 check_azure_login() {
     if az account show &> /dev/null; then
         ACCOUNT_NAME=$(az account show --query "name" -o tsv)
         SUBSCRIPTION_ID=$(az account show --query "id" -o tsv)
-        echo -e "${GREEN}[OK]${NC} ConnectÃ© Ã  Azure"
+        echo -e "${GREEN}[OK]${NC} Connecte a Azure"
         echo "  - Subscription: $ACCOUNT_NAME"
         echo "  - ID: $SUBSCRIPTION_ID"
         return 0
@@ -51,58 +51,58 @@ check_azure_login() {
 azure_login() {
     echo -e "${YELLOW}[ACTION]${NC} Connexion Azure requise"
     echo ""
-    echo -e "${BLUE}Utilisez la mÃ©thode device-code pour vous connecter:${NC}"
+    echo -e "${BLUE}Utilisez la methode device-code pour vous connecter:${NC}"
     echo ""
     
     if az login --use-device-code; then
         echo ""
-        echo -e "${GREEN}[SUCCESS]${NC} Connexion rÃ©ussie!"
+        echo -e "${GREEN}[SUCCESS]${NC} Connexion reussie!"
         check_azure_login
-        # Enregistrer les providers Azure aprÃ¨s connexion
+        # Enregistrer les providers Azure apres connexion
         register_azure_providers
     else
-        echo -e "${RED}[ERROR]${NC} Ã‰chec de la connexion Azure"
-        echo -e "${YELLOW}[INFO]${NC} Vous pouvez rÃ©essayer avec: az login --use-device-code"
+        echo -e "${RED}[ERROR]${NC} Echec de la connexion Azure"
+        echo -e "${YELLOW}[INFO]${NC} Vous pouvez reessayer avec: az login --use-device-code"
         # Ne pas exit, continuer pour permettre l'utilisation du shell
     fi
 }
 
-# Fonction pour enregistrer les providers Azure nÃ©cessaires
+# Fonction pour enregistrer les providers Azure necessaires
 register_azure_providers() {
     echo ""
-    echo -e "${BLUE}[PROVIDERS]${NC} VÃ©rification des providers Azure..."
+    echo -e "${BLUE}[PROVIDERS]${NC} Verification des providers Azure..."
     
-    # Liste des providers nÃ©cessaires pour ce projet
+    # Liste des providers necessaires pour ce projet
     PROVIDERS=("Microsoft.App" "Microsoft.ContainerRegistry" "Microsoft.Storage" "Microsoft.OperationalInsights" "Microsoft.DBforPostgreSQL")
     
     # Array pour tracker les providers en attente
     declare -a PENDING_PROVIDERS=()
     
-    # PremiÃ¨re passe : vÃ©rifier et lancer l'enregistrement si nÃ©cessaire
+    # Premiere passe : verifier et lancer l'enregistrement si necessaire
     for provider in "${PROVIDERS[@]}"; do
         STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
         
         if [ "$STATE" = "Registered" ]; then
-            echo -e "  ${GREEN}âœ“${NC} $provider"
+            echo -e "  ${GREEN}[OK]${NC} $provider"
         elif [ "$STATE" = "Registering" ]; then
-            echo -e "  ${YELLOW}â³${NC} $provider (en cours...)"
+            echo -e "  ${YELLOW}[...]${NC} $provider (en cours...)"
             PENDING_PROVIDERS+=("$provider")
         else
-            echo -e "  ${YELLOW}â†’${NC} $provider (enregistrement...)"
+            echo -e "  ${YELLOW}[->]${NC} $provider (enregistrement...)"
             # || true pour ne pas bloquer si pas les permissions
             az provider register --namespace "$provider" &>/dev/null || true
             PENDING_PROVIDERS+=("$provider")
         fi
     done
     
-    # Si des providers sont en attente, attendre qu'ils soient tous prÃªts
+    # Si des providers sont en attente, attendre qu'ils soient tous prets
     if [ ${#PENDING_PROVIDERS[@]} -gt 0 ]; then
         echo ""
         echo -e "${BLUE}[INFO]${NC} ${#PENDING_PROVIDERS[@]} provider(s) en cours d'enregistrement..."
         echo -e "${BLUE}[INFO]${NC} Attente automatique (max 3 min)..."
         echo ""
         
-        # Attendre jusqu'Ã  3 minutes (36 x 5s)
+        # Attendre jusqu'a 3 minutes (36 x 5s)
         MAX_ATTEMPTS=36
         ATTEMPT=0
         
@@ -110,12 +110,12 @@ register_azure_providers() {
             ATTEMPT=$((ATTEMPT + 1))
             ELAPSED=$((ATTEMPT * 5))
             
-            # VÃ©rifier chaque provider en attente
+            # Verifier chaque provider en attente
             STILL_PENDING=()
             for provider in "${PENDING_PROVIDERS[@]}"; do
                 STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "Unknown")
                 if [ "$STATE" = "Registered" ]; then
-                    echo -e "  ${GREEN}âœ“${NC} $provider ${GREEN}(prÃªt aprÃ¨s ${ELAPSED}s)${NC}"
+                    echo -e "  ${GREEN}[OK]${NC} $provider ${GREEN}(pret apres ${ELAPSED}s)${NC}"
                 else
                     STILL_PENDING+=("$provider")
                 fi
@@ -123,33 +123,33 @@ register_azure_providers() {
             
             PENDING_PROVIDERS=("${STILL_PENDING[@]}")
             
-            # Si tous sont prÃªts, sortir
+            # Si tous sont prets, sortir
             if [ ${#PENDING_PROVIDERS[@]} -eq 0 ]; then
                 break
             fi
             
             # Afficher progression
-            echo -ne "\r  ${YELLOW}â³${NC} Attente: ${ELAPSED}s / 180s - En attente: ${PENDING_PROVIDERS[*]}   "
+            echo -ne "\r  ${YELLOW}[...]${NC} Attente: ${ELAPSED}s / 180s - En attente: ${PENDING_PROVIDERS[*]}   "
             sleep 5
         done
         
         echo ""
         
-        # VÃ©rification finale
+        # Verification finale
         if [ ${#PENDING_PROVIDERS[@]} -gt 0 ]; then
-            echo -e "${YELLOW}[WARNING]${NC} Providers encore en attente aprÃ¨s 3 min:"
+            echo -e "${YELLOW}[WARNING]${NC} Providers encore en attente apres 3 min:"
             for provider in "${PENDING_PROVIDERS[@]}"; do
                 STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "Unknown")
-                echo -e "  ${YELLOW}â³${NC} $provider ($STATE)"
+                echo -e "  ${YELLOW}[...]${NC} $provider ($STATE)"
             done
             echo ""
-            echo -e "${YELLOW}[INFO]${NC} L'enregistrement continue en arriÃ¨re-plan."
-            echo -e "${YELLOW}[INFO]${NC} Attendez 1-2 min avant terraform apply, ou rÃ©essayez si erreur."
+            echo -e "${YELLOW}[INFO]${NC} L'enregistrement continue en arriere-plan."
+            echo -e "${YELLOW}[INFO]${NC} Attendez 1-2 min avant terraform apply, ou reessayez si erreur."
         else
-            echo -e "${GREEN}[OK]${NC} Tous les providers sont enregistrÃ©s!"
+            echo -e "${GREEN}[OK]${NC} Tous les providers sont enregistres!"
         fi
     else
-        echo -e "${GREEN}[OK]${NC} Tous les providers sont dÃ©jÃ  enregistrÃ©s!"
+        echo -e "${GREEN}[OK]${NC} Tous les providers sont deja enregistres!"
     fi
 }
 
@@ -160,44 +160,44 @@ init_terraform() {
             echo ""
             echo -e "${BLUE}[TERRAFORM]${NC} Initialisation de Terraform..."
             if terraform init; then
-                echo -e "${GREEN}[OK]${NC} Terraform initialisÃ©!"
+                echo -e "${GREEN}[OK]${NC} Terraform initialise!"
             else
-                echo -e "${YELLOW}[WARNING]${NC} Terraform init a rencontrÃ© des erreurs"
-                echo -e "${YELLOW}[INFO]${NC} Vous pouvez rÃ©essayer manuellement: terraform init"
+                echo -e "${YELLOW}[WARNING]${NC} Terraform init a rencontre des erreurs"
+                echo -e "${YELLOW}[INFO]${NC} Vous pouvez reessayer manuellement: terraform init"
             fi
         else
-            echo -e "${GREEN}[OK]${NC} Terraform dÃ©jÃ  initialisÃ©"
+            echo -e "${GREEN}[OK]${NC} Terraform deja initialise"
         fi
     fi
 }
 
-# VÃ©rification initiale de la connexion
+# Verification initiale de la connexion
 if ! check_azure_login; then
-    echo -e "${YELLOW}[INFO]${NC} Vous n'Ãªtes pas connectÃ© Ã  Azure"
+    echo -e "${YELLOW}[INFO]${NC} Vous n'etes pas connecte a Azure"
     echo ""
     read -p "Voulez-vous vous connecter maintenant? (o/n) " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Oo]$ ]]; then
         azure_login
     else
-        echo -e "${YELLOW}[WARNING]${NC} Certaines commandes Terraform nÃ©cessitent une connexion Azure"
+        echo -e "${YELLOW}[WARNING]${NC} Certaines commandes Terraform necessitent une connexion Azure"
     fi
 else
-    # Si dÃ©jÃ  connectÃ©, vÃ©rifier les providers
+    # Si deja connecte, verifier les providers
     register_azure_providers
 fi
 
-# Initialiser Terraform automatiquement si nÃ©cessaire
+# Initialiser Terraform automatiquement si necessaire
 init_terraform
 
 # =============================================================================
-# CrÃ©ation des commandes simplifiÃ©es (disponibles dans le shell)
+# Creation des commandes simplifiees (disponibles dans le shell)
 # =============================================================================
 
-# CrÃ©er le fichier de fonctions bash ET l'ajouter au .bashrc
+# Creer le fichier de fonctions bash ET l'ajouter au .bashrc
 cat > /root/.terraform-helpers.sh << 'HELPERS_EOF'
 #!/bin/bash
-# Commandes simplifiÃ©es pour Terraform
+# Commandes simplifiees pour Terraform
 
 # Couleurs
 _RED='\033[0;31m'
@@ -218,7 +218,7 @@ plan() {
     terraform plan -var-file="environments/${env}.tfvars" -var-file="environments/secrets.tfvars"
 }
 
-# Fonction apply (avec gÃ©nÃ©ration .env automatique)
+# Fonction apply (avec generation .env automatique)
 apply() {
     local env=${1:-dev}
     if [[ ! "$env" =~ ^(dev|rec|prod)$ ]]; then
@@ -230,11 +230,11 @@ apply() {
     
     if terraform apply -var-file="environments/${env}.tfvars" -var-file="environments/secrets.tfvars"; then
         echo ""
-        echo -e "${_BLUE}[GENERATE]${_NC} GÃ©nÃ©ration du fichier .env..."
+        echo -e "${_BLUE}[GENERATE]${_NC} Generation du fichier .env..."
         if [ -f "./scripts/generate-env.sh" ]; then
             ./scripts/generate-env.sh "$env"
         else
-            echo -e "${_YELLOW}[WARNING]${_NC} Script generate-env.sh non trouvÃ©"
+            echo -e "${_YELLOW}[WARNING]${_NC} Script generate-env.sh non trouve"
         fi
     fi
 }
@@ -255,7 +255,7 @@ destroy() {
         if [ -f "$env_file" ]; then
             echo -e "${_YELLOW}[CLEANUP]${_NC} Suppression de $env_file..."
             rm -f "$env_file"
-            echo -e "${_GREEN}[OK]${_NC} Fichier .env supprimÃ©"
+            echo -e "${_GREEN}[OK]${_NC} Fichier .env supprime"
         fi
     fi
 }
@@ -265,7 +265,7 @@ output() {
     terraform output "$@"
 }
 
-# Fonction pour rÃ©gÃ©nÃ©rer le .env sans redÃ©ployer
+# Fonction pour regenerer le .env sans redeployer
 genenv() {
     local env=${1:-dev}
     if [[ ! "$env" =~ ^(dev|rec|prod)$ ]]; then
@@ -276,38 +276,38 @@ genenv() {
     if [ -f "./scripts/generate-env.sh" ]; then
         ./scripts/generate-env.sh "$env"
     else
-        echo -e "${_RED}[ERROR]${_NC} Script generate-env.sh non trouvÃ©"
+        echo -e "${_RED}[ERROR]${_NC} Script generate-env.sh non trouve"
     fi
 }
 
 # Fonction help
 tfhelp() {
     echo ""
-    echo -e "${_BLUE}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${_NC}"
-    echo -e "${_BLUE}                    COMMANDES DISPONIBLES                           ${_NC}"
-    echo -e "${_BLUE}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${_NC}"
+    echo -e "${_BLUE}======================================================================${_NC}"
+    echo -e "${_BLUE}                    COMMANDES DISPONIBLES                            ${_NC}"
+    echo -e "${_BLUE}======================================================================${_NC}"
     echo ""
-    echo -e "${_GREEN}Commandes simplifiÃ©es:${_NC}"
-    echo "  plan [env]     - PrÃ©visualiser (dÃ©faut: dev)"
-    echo "  apply [env]    - DÃ©ployer + gÃ©nÃ©rer .env (dÃ©faut: dev)"
-    echo "  destroy [env]  - DÃ©truire + supprimer .env (dÃ©faut: dev)"
+    echo -e "${_GREEN}Commandes simplifiees:${_NC}"
+    echo "  plan [env]     - Previsualiser (defaut: dev)"
+    echo "  apply [env]    - Deployer + generer .env (defaut: dev)"
+    echo "  destroy [env]  - Detruire + supprimer .env (defaut: dev)"
     echo "  output         - Voir les outputs Terraform"
-    echo "  genenv [env]   - RÃ©gÃ©nÃ©rer le .env sans redÃ©ployer"
+    echo "  genenv [env]   - Regenerer le .env sans redeployer"
     echo "  tfhelp         - Afficher cette aide"
     echo ""
     echo -e "${_YELLOW}Environnements:${_NC} dev, rec, prod"
     echo ""
     echo -e "${_BLUE}Exemples:${_NC}"
-    echo "  plan dev       - PrÃ©visualiser l'environnement dev"
-    echo "  apply dev      - DÃ©ployer dev + gÃ©nÃ©rer shared/.env.dev"
-    echo "  destroy prod   - DÃ©truire prod + supprimer shared/.env.prod"
+    echo "  plan dev       - Previsualiser l'environnement dev"
+    echo "  apply dev      - Deployer dev + generer shared/.env.dev"
+    echo "  destroy prod   - Detruire prod + supprimer shared/.env.prod"
     echo ""
     echo -e "${_BLUE}Autres commandes:${_NC}"
-    echo "  az login --use-device-code  - Se reconnecter Ã  Azure"
+    echo "  az login --use-device-code  - Se reconnecter a Azure"
     echo "  terraform [cmd]             - Commandes Terraform directes"
     echo -e "  ${_RED}exit${_NC}                        - Quitter le workspace"
     echo ""
-    echo -e "${_BLUE}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${_NC}"
+    echo -e "${_BLUE}======================================================================${_NC}"
 }
 HELPERS_EOF
 
@@ -322,11 +322,11 @@ fi
 source /root/.terraform-helpers.sh
 
 echo ""
-echo -e "${GREEN}[READY]${NC} Workspace Terraform prÃªt!"
+echo -e "${GREEN}[READY]${NC} Workspace Terraform pret!"
 echo ""
 
 # Afficher l'aide automatiquement
 tfhelp
 
-# ExÃ©cution de la commande passÃ©e en argument
+# Execution de la commande passee en argument
 exec "$@"
