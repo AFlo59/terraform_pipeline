@@ -36,6 +36,18 @@ variable "location" {
   default     = "francecentral"
 }
 
+variable "use_existing_resource_group" {
+  description = "Utiliser un Resource Group existant au lieu d'en créer un nouveau"
+  type        = bool
+  default     = false
+}
+
+variable "existing_resource_group_name" {
+  description = "Nom du Resource Group existant (si use_existing_resource_group = true)"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags à appliquer à toutes les ressources"
   type        = map(string)
@@ -122,6 +134,12 @@ variable "postgres_admin_password" {
   type        = string
   sensitive   = true
   default     = ""  # Sera généré automatiquement si non fourni
+}
+
+variable "postgres_allow_all_ips" {
+  description = "Autoriser toutes les IPs à se connecter (dev/rec uniquement, pas prod!)"
+  type        = bool
+  default     = false
 }
 
 # -----------------------------------------------------------------------------

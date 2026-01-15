@@ -62,12 +62,20 @@ if (-not (Test-Path $TerraformDir)) {
 
 # Chemins Windows -> format Docker
 $TerraformDirDocker = $TerraformDir -replace '\\', '/' -replace '^([A-Za-z]):', '/$1'
-$BriefTerraformDir = Join-Path $MainProjectDir "brief-terraform"
-$BriefTerraformDirDocker = $BriefTerraformDir -replace '\\', '/' -replace '^([A-Za-z]):', '/$1'
+$DataPipelineDir = Join-Path $MainProjectDir "data_pipeline"
+$DataPipelineDirDocker = $DataPipelineDir -replace '\\', '/' -replace '^([A-Za-z]):', '/$1'
+$SharedDir = Join-Path $MainProjectDir "shared"
+$SharedDirDocker = $SharedDir -replace '\\', '/' -replace '^([A-Za-z]):', '/$1'
+
+# Creer le dossier shared s'il n'existe pas
+if (-not (Test-Path $SharedDir)) {
+    New-Item -ItemType Directory -Path $SharedDir -Force | Out-Null
+}
 
 Write-Info "Montage des volumes:"
 Write-Host "  - Terraform config: $TerraformDir -> /workspace/terraform"
-Write-Host "  - brief-terraform:  $BriefTerraformDir -> /workspace/brief-terraform (read-only)"
+Write-Host "  - Shared (env):     $SharedDir -> /workspace/shared"
+Write-Host "  - data_pipeline:    $DataPipelineDir -> /workspace/data_pipeline (read-only)"
 Write-Host ""
 
 # Options Docker
@@ -85,7 +93,8 @@ try {
         ) + $DockerOpts + @(
             "--name", $ContainerName
             "-v", "${TerraformDirDocker}:/workspace/terraform"
-            "-v", "${BriefTerraformDirDocker}:/workspace/brief-terraform:ro"
+            "-v", "${SharedDirDocker}:/workspace/shared"
+            "-v", "${DataPipelineDirDocker}:/workspace/data_pipeline:ro"
             "-w", "/workspace/terraform"
             "${ImageName}:${ImageTag}"
             "bash", "-c", $Cmd
@@ -99,7 +108,8 @@ try {
         ) + $DockerOpts + @(
             "--name", $ContainerName
             "-v", "${TerraformDirDocker}:/workspace/terraform"
-            "-v", "${BriefTerraformDirDocker}:/workspace/brief-terraform:ro"
+            "-v", "${SharedDirDocker}:/workspace/shared"
+            "-v", "${DataPipelineDirDocker}:/workspace/data_pipeline:ro"
             "-w", "/workspace/terraform"
             "${ImageName}:${ImageTag}"
         )
