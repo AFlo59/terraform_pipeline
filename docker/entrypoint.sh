@@ -5,7 +5,8 @@
 # Ce script initialise l'environnement et vérifie la connexion Azure
 # =============================================================================
 
-set -e
+# Note: on n'utilise PAS "set -e" car certaines commandes peuvent échouer
+# (ex: az provider register si pas les permissions) sans bloquer le script
 
 # Couleurs pour les messages
 RED='\033[0;31m'
@@ -52,9 +53,8 @@ azure_login() {
     echo ""
     echo -e "${BLUE}Utilisez la méthode device-code pour vous connecter:${NC}"
     echo ""
-    az login --use-device-code
     
-    if [ $? -eq 0 ]; then
+    if az login --use-device-code; then
         echo ""
         echo -e "${GREEN}[SUCCESS]${NC} Connexion réussie!"
         check_azure_login
@@ -62,7 +62,8 @@ azure_login() {
         register_azure_providers
     else
         echo -e "${RED}[ERROR]${NC} Échec de la connexion Azure"
-        exit 1
+        echo -e "${YELLOW}[INFO]${NC} Vous pouvez réessayer avec: az login --use-device-code"
+        # Ne pas exit, continuer pour permettre l'utilisation du shell
     fi
 }
 
@@ -74,8 +75,10 @@ register_azure_providers() {
     # Liste des providers nécessaires pour ce projet
     PROVIDERS=("Microsoft.App" "Microsoft.ContainerRegistry" "Microsoft.Storage" "Microsoft.OperationalInsights" "Microsoft.DBforPostgreSQL")
     
-    local need_wait=false
+    # Array pour tracker les providers en attente
+    declare -a PENDING_PROVIDERS=()
     
+    # Première passe : vérifier et lancer l'enregistrement si nécessaire
     for provider in "${PROVIDERS[@]}"; do
         STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
         
@@ -83,36 +86,71 @@ register_azure_providers() {
             echo -e "  ${GREEN}✓${NC} $provider"
         elif [ "$STATE" = "Registering" ]; then
             echo -e "  ${YELLOW}⏳${NC} $provider (en cours...)"
-            need_wait=true
+            PENDING_PROVIDERS+=("$provider")
         else
             echo -e "  ${YELLOW}→${NC} $provider (enregistrement...)"
-            az provider register --namespace "$provider" &>/dev/null &
-            need_wait=true
+            # || true pour ne pas bloquer si pas les permissions
+            az provider register --namespace "$provider" &>/dev/null || true
+            PENDING_PROVIDERS+=("$provider")
         fi
     done
     
-    # Si Microsoft.App n'est pas prêt, attendre un peu (max 30s) mais ne pas bloquer
-    if [ "$need_wait" = true ]; then
+    # Si des providers sont en attente, attendre qu'ils soient tous prêts
+    if [ ${#PENDING_PROVIDERS[@]} -gt 0 ]; then
         echo ""
-        echo -e "${BLUE}[INFO]${NC} Certains providers sont en cours d'enregistrement."
-        echo -e "${BLUE}[INFO]${NC} Cela continue en arrière-plan. Vous pouvez lancer terraform apply."
-        echo -e "${BLUE}[INFO]${NC} Si erreur 'MissingSubscriptionRegistration', attendez 1-2 min et réessayez."
+        echo -e "${BLUE}[INFO]${NC} ${#PENDING_PROVIDERS[@]} provider(s) en cours d'enregistrement..."
+        echo -e "${BLUE}[INFO]${NC} Attente automatique (max 3 min)..."
+        echo ""
         
-        # Attente rapide (30s max) avec feedback
-        echo -n -e "${YELLOW}[WAIT]${NC} Vérification rapide (30s max)..."
-        for i in {1..6}; do
-            STATE=$(az provider show --namespace "Microsoft.App" --query "registrationState" -o tsv 2>/dev/null)
-            if [ "$STATE" = "Registered" ]; then
-                echo -e " ${GREEN}OK!${NC}"
+        # Attendre jusqu'à 3 minutes (36 x 5s)
+        MAX_ATTEMPTS=36
+        ATTEMPT=0
+        
+        while [ ${#PENDING_PROVIDERS[@]} -gt 0 ] && [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            ELAPSED=$((ATTEMPT * 5))
+            
+            # Vérifier chaque provider en attente
+            STILL_PENDING=()
+            for provider in "${PENDING_PROVIDERS[@]}"; do
+                STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "Unknown")
+                if [ "$STATE" = "Registered" ]; then
+                    echo -e "  ${GREEN}✓${NC} $provider ${GREEN}(prêt après ${ELAPSED}s)${NC}"
+                else
+                    STILL_PENDING+=("$provider")
+                fi
+            done
+            
+            PENDING_PROVIDERS=("${STILL_PENDING[@]}")
+            
+            # Si tous sont prêts, sortir
+            if [ ${#PENDING_PROVIDERS[@]} -eq 0 ]; then
                 break
             fi
-            echo -n "."
+            
+            # Afficher progression
+            echo -ne "\r  ${YELLOW}⏳${NC} Attente: ${ELAPSED}s / 180s - En attente: ${PENDING_PROVIDERS[*]}   "
             sleep 5
         done
+        
         echo ""
+        
+        # Vérification finale
+        if [ ${#PENDING_PROVIDERS[@]} -gt 0 ]; then
+            echo -e "${YELLOW}[WARNING]${NC} Providers encore en attente après 3 min:"
+            for provider in "${PENDING_PROVIDERS[@]}"; do
+                STATE=$(az provider show --namespace "$provider" --query "registrationState" -o tsv 2>/dev/null || echo "Unknown")
+                echo -e "  ${YELLOW}⏳${NC} $provider ($STATE)"
+            done
+            echo ""
+            echo -e "${YELLOW}[INFO]${NC} L'enregistrement continue en arrière-plan."
+            echo -e "${YELLOW}[INFO]${NC} Attendez 1-2 min avant terraform apply, ou réessayez si erreur."
+        else
+            echo -e "${GREEN}[OK]${NC} Tous les providers sont enregistrés!"
+        fi
+    else
+        echo -e "${GREEN}[OK]${NC} Tous les providers sont déjà enregistrés!"
     fi
-    
-    echo -e "${GREEN}[OK]${NC} Providers Azure vérifiés"
 }
 
 # Fonction pour initialiser Terraform
@@ -121,9 +159,11 @@ init_terraform() {
         if [ ! -d ".terraform" ]; then
             echo ""
             echo -e "${BLUE}[TERRAFORM]${NC} Initialisation de Terraform..."
-            terraform init
-            if [ $? -eq 0 ]; then
+            if terraform init; then
                 echo -e "${GREEN}[OK]${NC} Terraform initialisé!"
+            else
+                echo -e "${YELLOW}[WARNING]${NC} Terraform init a rencontré des erreurs"
+                echo -e "${YELLOW}[INFO]${NC} Vous pouvez réessayer manuellement: terraform init"
             fi
         else
             echo -e "${GREEN}[OK]${NC} Terraform déjà initialisé"
@@ -153,16 +193,41 @@ init_terraform
 echo ""
 echo -e "${GREEN}[READY]${NC} Workspace Terraform prêt!"
 echo ""
-echo -e "${BLUE}Commandes utiles:${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}                         COMMANDES UTILES                           ${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${GREEN}Commandes de base:${NC}"
 echo "  terraform plan      - Prévisualiser les changements"
 echo "  terraform apply     - Appliquer les changements"
 echo "  terraform destroy   - Détruire l'infrastructure"
+echo "  terraform output    - Voir les outputs"
 echo "  az login --use-device-code  - Se reconnecter à Azure"
 echo ""
-echo -e "${BLUE}Appliquer (dev):${NC}"
-echo "  terraform apply -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${RED}exit${NC}                  - Quitter le workspace"
 echo ""
-echo "─────────────────────────────────────────────────────────────────────"
+echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
+echo -e "${YELLOW}Plan (prévisualiser):${NC}"
+echo ""
+echo -e "  ${GREEN}DEV:${NC}  terraform plan -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${YELLOW}REC:${NC}  terraform plan -var-file=environments/rec.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${RED}PROD:${NC} terraform plan -var-file=environments/prod.tfvars -var-file=environments/secrets.tfvars"
+echo ""
+echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
+echo -e "${GREEN}Apply (déployer):${NC}"
+echo ""
+echo -e "  ${GREEN}DEV:${NC}  terraform apply -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${YELLOW}REC:${NC}  terraform apply -var-file=environments/rec.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${RED}PROD:${NC} terraform apply -var-file=environments/prod.tfvars -var-file=environments/secrets.tfvars"
+echo ""
+echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
+echo -e "${RED}Destroy (supprimer):${NC}"
+echo ""
+echo -e "  ${GREEN}DEV:${NC}  terraform destroy -var-file=environments/dev.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${YELLOW}REC:${NC}  terraform destroy -var-file=environments/rec.tfvars -var-file=environments/secrets.tfvars"
+echo -e "  ${RED}PROD:${NC} terraform destroy -var-file=environments/prod.tfvars -var-file=environments/secrets.tfvars"
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 # Exécution de la commande passée en argument
